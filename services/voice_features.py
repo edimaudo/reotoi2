@@ -32,7 +32,13 @@ def _estimate_pause_ratio(rms: np.ndarray) -> float:
 
 def analyze_audio(file_path: str | Path) -> dict[str, float]:
     """Extract deterministic acoustic characteristics from an audio file."""
-    audio, sample_rate = librosa.load(str(file_path), sr=None, mono=True)
+    try:
+        audio, sample_rate = librosa.load(str(file_path), sr=None, mono=True)
+    except Exception as exc:
+        raise ValueError(
+            "reotoi could not decode this audio. Microphone recordings are captured as WAV; "
+            "for uploaded files, please use WAV, OGG, or another audio format supported by the deployment."
+        ) from exc
 
     if audio.size == 0:
         raise ValueError("The audio recording is empty.")
@@ -54,7 +60,7 @@ def analyze_audio(file_path: str | Path) -> dict[str, float]:
     pitch_spread = float(np.std(voiced_f0)) if voiced_f0.size else 0.0
 
     onset_env = librosa.onset.onset_strength(y=audio, sr=sample_rate)
-    onset_mean = float(onset_env.mean()) if onset_env.size else 0.0
+    onset_mean = float(onset_env.mean()) if onset_env.size else 0.0  # onset strength is a rhythm proxy, not words-per-minute
 
     spectral_centroid = librosa.feature.spectral_centroid(
         y=audio,
@@ -71,7 +77,6 @@ def analyze_audio(file_path: str | Path) -> dict[str, float]:
         "variation": safe_normalize(pitch_spread, 5.0, 80.0),
         "pause": _estimate_pause_ratio(rms),
         "spectral": safe_normalize(centroid_mean, 500.0, 4000.0),
-        "speech_rate": safe_normalize(onset_mean, 0.1, 4.0),
         "duration": min(duration, MAX_RECORDING_SECONDS),
     }
 

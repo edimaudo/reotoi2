@@ -67,25 +67,26 @@
   const audioFileInput = document.getElementById("audio-file");
   const fileName = document.getElementById("file-name");
   const formError = document.getElementById("form-error");
+  const artStyleSelect = document.getElementById("art-style");
 
   const resultSection = document.getElementById("result-section");
   // Optional: older templates may omit this message element.
   const resultMessage = document.getElementById("result-message");
   const resultTheme = document.getElementById("result-theme");
   const resultInput = document.getElementById("result-input");
+  const resultArtStyle = document.getElementById("result-art-style");
+  const resultOutputMode = document.getElementById("result-output-mode");
+  const resultEngine = document.getElementById("result-engine");
+  const resultSourceNote = document.getElementById("result-source-note");
+  const resultPrompt = document.getElementById("result-prompt");
 
   const voiceDnaBars = document.getElementById("voice-dna-bars");
   const artworkImage = document.getElementById("artwork-image");
   const artworkPlaceholder = document.getElementById("artwork-placeholder");
 
   const downloadButton = document.getElementById("download-button");
-  const clearButton = document.getElementById("clear-button");
   const saveButton = document.getElementById("save-button");
   const saveStatus = document.getElementById("save-status");
-
-  const clearArtworkModal = document.getElementById("clear-artwork-modal");
-  const clearArtworkConfirm = document.getElementById("clear-artwork-confirm");
-  const clearArtworkCancel = document.getElementById("clear-artwork-cancel");
 
   // The creation page depends on these elements. Fail cleanly if the template
   // is out of sync instead of throwing "Cannot set properties of null" later.
@@ -100,6 +101,7 @@
     audioFileInput,
     fileName,
     formError,
+    artStyleSelect,
     resultSection,
     resultTheme,
     resultInput,
@@ -107,7 +109,6 @@
     artworkImage,
     artworkPlaceholder,
     downloadButton,
-    clearButton,
     saveButton,
     saveStatus,
   };
@@ -161,11 +162,6 @@
     );
   }
 
-  function extensionFor(dataUri) {
-    const mime = String(dataUri || "").slice(5, dataUri.indexOf(";"));
-    return { "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp" }[mime] || "svg";
-  }
-
   function setError(message) {
     if (!formError) return;
 
@@ -185,6 +181,18 @@
       document.querySelector('input[name="theme"]:checked')?.value ||
       "surprise"
     );
+  }
+
+  function getArtStyle() {
+    return artStyleSelect?.value || "painterly";
+  }
+
+  function getOutputMode() {
+    return document.querySelector('input[name="output_mode"]:checked')?.value || "svg";
+  }
+
+  function humanize(value) {
+    return String(value || "—").replaceAll("_", " ").replaceAll("-", " ");
   }
 
   function updateGenerateState() {
@@ -1129,29 +1137,20 @@
     }
 
     if (resultInput) {
-      setElementText(
-        resultInput,
-        data.input_source === "upload"
-          ? "Audio file"
-          : "Microphone"
-      );
+      setElementText(resultInput, data.input_source === "upload" ? "Audio file" : "Microphone");
     }
+    if (resultArtStyle) setElementText(resultArtStyle, humanize(data.art_style || getArtStyle()));
+    if (resultOutputMode) {
+      const used = data.output_mode_requested || getOutputMode();
+      const labels = { svg: "SVG only", muse_image: "Muse Image only", fusion: "Fusion", svg_fallback: "SVG fallback" };
+      setElementText(resultOutputMode, labels[used] || humanize(used));
+    }
+    if (resultEngine) setElementText(resultEngine, data.artwork_engine || "Not reported");
+    if (resultSourceNote) setElementText(resultSourceNote, data.source_note || "");
+    if (resultPrompt) setElementText(resultPrompt, data.prompt || "No external image prompt was used for this output.");
 
     renderVoiceDna(
       data.voice_dna || {}
-    );
-
-    setElementText(document.getElementById("result-title"), data.title || "Your Artwork");
-    setElementText(document.getElementById("result-mood"), data.mood || "—");
-    setElementText(
-      document.getElementById("result-transcript"),
-      data.transcript || "Not transcribed. Add a Meta Model API key to enable Muse Voice Transcribe."
-    );
-    setElementText(document.getElementById("result-prompt"), data.prompt || "—");
-    const engine = data.engine || {};
-    setElementText(
-      document.getElementById("result-engine"),
-      `Voice: ${engine.transcription || "—"} · Prompt: ${engine.prompt || "—"} · Image: ${engine.image || "—"}`
     );
 
     if (
@@ -1174,11 +1173,8 @@
         downloadButton.href =
           data.artwork_url;
 
-        downloadButton.download =
-          `${
-            data.artwork_id ||
-            "reotoi-artwork"
-          }.${extensionFor(data.artwork_url)}`;
+        const extension = String(data.artwork_url).startsWith("data:image/svg+xml") ? "svg" : String(data.artwork_url).startsWith("data:image/jpeg") ? "jpg" : String(data.artwork_url).startsWith("data:image/webp") ? "webp" : "png";
+        downloadButton.download = `${data.artwork_id || "reotoi-artwork"}.${extension}`;
 
         downloadButton.classList.remove(
           "is-disabled"
@@ -1235,102 +1231,6 @@
     }
   }
 
-  function resetCreation() {
-    // Invalidate any audio preparation currently in progress so an older
-    // promise cannot put the cleared audio back into state.
-    preparationToken += 1;
-
-    recording = false;
-    preparingAudio = false;
-
-    stopTimer();
-    cleanupAudioGraph();
-    resetRecordingVisuals();
-
-    recordedSamples = [];
-    recordedSampleCount = 0;
-    elapsed = 0;
-    source = null;
-    latestResult = null;
-
-    if (audioFileInput) {
-      audioFileInput.value = "";
-    }
-
-    setElementText(fileName, "");
-    setElementText(
-      recorderStatus,
-      `Ready to record (max. ${maxSeconds} seconds)`
-    );
-    setElementText(recorderTimer, formatTime(0));
-    setElementText(
-      recorderHelp,
-      "Your browser will ask for microphone permission."
-    );
-    setElementText(recordLabel, "Start speaking");
-
-    if (recorder) {
-      recorder.classList.remove("is-recording");
-    }
-
-    setError("");
-
-    if (resultSection) {
-      resultSection.hidden = true;
-    }
-
-    if (artworkImage) {
-      artworkImage.removeAttribute("src");
-      artworkImage.alt = "Generated artwork";
-      artworkImage.hidden = true;
-    }
-
-    if (artworkPlaceholder) {
-      artworkPlaceholder.hidden = false;
-    }
-
-    if (voiceDnaBars) {
-      voiceDnaBars.replaceChildren();
-    }
-
-    setElementText(resultTheme, "—");
-    setElementText(resultInput, "—");
-
-    if (resultMessage) {
-      setElementText(resultMessage, "");
-    }
-
-    if (downloadButton) {
-      downloadButton.removeAttribute("href");
-      downloadButton.removeAttribute("download");
-      downloadButton.classList.add("is-disabled");
-      downloadButton.setAttribute("aria-disabled", "true");
-    }
-
-    if (saveButton) {
-      saveButton.disabled = true;
-    }
-
-    showSaveStatus("");
-    updateGenerateState();
-  }
-
-  function openClearArtworkModal() {
-    if (!clearArtworkModal) return;
-
-    if (typeof clearArtworkModal.showModal === "function") {
-      clearArtworkModal.showModal();
-    }
-  }
-
-  function closeClearArtworkModal() {
-    if (!clearArtworkModal) return;
-
-    if (typeof clearArtworkModal.close === "function") {
-      clearArtworkModal.close();
-    }
-  }
-
   async function parseResponse(response) {
     const contentType =
       response.headers.get(
@@ -1383,10 +1283,9 @@
       getTheme()
     );
 
-    form.append(
-      "input_source",
-      source.type
-    );
+    form.append("input_source", source.type);
+    form.append("art_style", getArtStyle());
+    form.append("output_mode", getOutputMode());
 
     if (generateButton) {
       generateButton.disabled = true;
@@ -1417,11 +1316,6 @@
           method: "POST",
           body: form,
         });
-
-      if (response.status === 401) {
-        window.location.assign("/login?next=/create");
-        return;
-      }
 
       const payload =
         await parseResponse(
@@ -1559,16 +1453,16 @@
             artwork_url:
               latestResult.artwork_url,
 
-            theme:
-              latestResult.theme ||
-              getTheme(),
+            theme: latestResult.theme || getTheme(),
+            art_style: latestResult.art_style || getArtStyle(),
+            output_mode_requested: latestResult.output_mode_requested || getOutputMode(),
+            output_mode_used: latestResult.output_mode_used || getOutputMode(),
+            artwork_engine: latestResult.artwork_engine || "Not reported",
+            source_note: latestResult.source_note || "",
 
             voice_dna:
               latestResult.voice_dna ||
               {},
-
-            title: latestResult.title || "",
-            mood: latestResult.mood || "",
 
             saved_at:
               new Date().toISOString(),
@@ -1608,45 +1502,6 @@
         }
       }
     );
-  }
-
-  if (clearButton) {
-    clearButton.addEventListener("click", () => {
-      openClearArtworkModal();
-    });
-  }
-
-
-  if (clearArtworkConfirm) {
-  clearArtworkConfirm.addEventListener("click", () => {
-    closeClearArtworkModal();
-    resetCreation();
-
-    window.setTimeout(() => {
-      recordButton.focus();
-      recordButton.blur();
-    }, 0);
-  });
-}
-
-
-  if (clearArtworkCancel) {
-  clearArtworkCancel.addEventListener("click", () => {
-    closeClearArtworkModal();
-
-    window.setTimeout(() => {
-      clearButton.focus();
-      clearButton.blur();
-    }, 0);
-  });
-}
-
-  if (clearArtworkModal) {
-    clearArtworkModal.addEventListener("click", (event) => {
-      if (event.target === clearArtworkModal) {
-        closeClearArtworkModal();
-      }
-    });
   }
 
   if (downloadButton) {

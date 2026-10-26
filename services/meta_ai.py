@@ -1,15 +1,9 @@
 """Meta Model API client for reotoi.
 
-Pipeline (see services/pipeline.py):
-  1. Muse Voice Transcribe  -> what the person said
-  2. Muse Spark             -> mood plus an image prompt written from the voice features
-  3. Muse Image             -> the artwork
-
-Base URL and auth follow the Meta Model API docs: https://api.meta.ai/v1 with a
-bearer token. Every call raises MetaAIError on failure so the pipeline can fall
-back to reotoi's own renderer instead of failing the whole request.
+The supported workflow is Muse Voice Transcribe -> Muse Spark -> Muse Image.
+Every call raises MetaAIError on failure so the pipeline can produce and label
+an honest local SVG fallback. API keys are only read from environment variables.
 """
-
 from __future__ import annotations
 
 import base64
@@ -17,33 +11,25 @@ import json
 import logging
 import os
 from pathlib import Path
-
 import httpx
 
 logger = logging.getLogger("reotoi.meta")
-
 API_BASE = os.getenv("META_API_BASE", "https://api.meta.ai/v1").rstrip("/") + "/"
-SPARK_MODEL = os.getenv("META_SPARK_MODEL", "muse-spark-1.3")  # Standard mode: content is not used for training
+SPARK_MODEL = os.getenv("META_SPARK_MODEL", "muse-spark-1.3")
 IMAGE_MODEL = os.getenv("META_IMAGE_MODEL", "muse-image-1.0")
 VOICE_MODEL = os.getenv("META_VOICE_MODEL", "muse-voice-transcribe-1.0")
 TEXT_TIMEOUT = float(os.getenv("META_TIMEOUT_SECONDS", "45"))
 IMAGE_TIMEOUT = float(os.getenv("META_IMAGE_TIMEOUT_SECONDS", "120"))
-
-# Tests inject an httpx.MockTransport here.
-_TRANSPORT: httpx.AsyncBaseTransport | None = None
-
+_TRANSPORT: httpx.AsyncBaseTransport | None = None  # injectable in tests
 
 class MetaAIError(RuntimeError):
-    """A Meta Model API call failed or returned something unusable."""
-
+    """A Meta Model API request failed or returned an unusable response."""
 
 def api_key() -> str | None:
     return os.getenv("MODEL_API_KEY") or os.getenv("META_API_KEY") or None
 
-
 def is_configured() -> bool:
     return bool(api_key())
-
 
 def _client(timeout: float) -> httpx.AsyncClient:
     key = api_key()
@@ -56,10 +42,8 @@ def _client(timeout: float) -> httpx.AsyncClient:
         transport=_TRANSPORT,
     )
 
-
 def _check(response: httpx.Response, what: str) -> dict:
     if response.status_code >= 400:
-        # Never log headers: they hold the API key.
         raise MetaAIError(f"{what} failed with HTTP {response.status_code}: {response.text[:200]}")
     try:
         body = response.json()
@@ -69,9 +53,8 @@ def _check(response: httpx.Response, what: str) -> dict:
         raise MetaAIError(f"{what} returned an unexpected response shape.")
     return body
 
-
 async def transcribe(wav_path: str | Path) -> str:
-    """Muse Voice Transcribe, file endpoint. Expects mono 16-bit PCM WAV at 16 or 24 kHz."""
+    """Transcribe prepared mono PCM WAV audio with Muse Voice Transcribe."""
     audio = Path(wav_path).read_bytes()
     try:
         async with _client(TEXT_TIMEOUT) as client:
@@ -88,42 +71,41 @@ async def transcribe(wav_path: str | Path) -> str:
         text = " ".join(str(part) for part in text)
     return str(text).strip()
 
-
 SPARK_SYSTEM = (
-    "You are the art director for reotoi, an app that turns a person's voice into original artwork. "
-    "You receive measured voice features (0 to 10 scales), a theme, and optionally what the person said. "
-    "Write one prompt for an image model. Rules: 60 to 90 words; describe subject, composition, named colors, "
-    "texture and light; pitch sets palette temperature (low is deep and warm, high is bright and cool), energy "
-    "sets density, rhythm sets how repetitive the marks are, variation sets contrast, pauses set negative space; "
-    "stay true to the requested theme; never quote or illustrate the words literally; no text, letters, logos or "
-    "real people in the image. Also judge the mood from both the voice and the words. "
-    'Return only JSON: {"title": 2 to 4 words, "mood": one word, "sentiment": number from -1 to 1, "prompt": string}.'
+    "You are the art director for reotoi, an app that turns voice characteristics into original artwork. "
+    "You receive measured voice features on 0–10 scales, a semantic theme, a visual art style, and optionally a transcript. "
+    "Write one 60–90 word prompt for an image model describing subject, composition, named colours, texture and light. "
+    "Respect the style as a distinct visual treatment: painterly, ink wash, cut-paper collage, luminous surrealism, "
+    "intricate generative linework, or a considered surprise choice. Pitch influences palette temperature; energy influences density; "
+    "rhythm influences mark repetition; variation influences contrast; pauses influence negative space. Stay true to the theme, "
+    "do not illustrate or quote transcript words literally, and include no text, lettering, logos or real people. "
+    "Return only JSON with keys title (2–4 words), mood (one word, creative interpretation only), sentiment (-1 to 1), and prompt (string)."
 )
-
 
 def _extract_json(text: str) -> dict:
     start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end <= start:
+    if start < 0 or end <= start:
         raise MetaAIError("Muse Spark did not return JSON.")
     try:
-        data = json.loads(text[start : end + 1])
+        data = json.loads(text[start:end + 1])
     except ValueError as exc:
         raise MetaAIError("Muse Spark returned malformed JSON.") from exc
     if not isinstance(data, dict):
         raise MetaAIError("Muse Spark returned an unexpected JSON shape.")
     return data
 
-
-async def write_art_brief(voice_dna: dict, duration: float, theme: str, transcript: str | None) -> dict:
-    """Muse Spark, Chat Completions. Returns title, mood, sentiment and prompt."""
-    user = json.dumps(
-        {
-            "theme": theme,
-            "voice_features_0_to_10": voice_dna,
-            "duration_seconds": round(duration, 1),
-            "transcript": transcript or None,
-        }
-    )
+async def write_art_brief(
+    voice_dna: dict, duration: float, theme: str, transcript: str | None,
+    art_style: str = "painterly",
+) -> dict:
+    """Use Muse Spark to shape an art prompt from voice metrics, theme and style."""
+    user = json.dumps({
+        "theme": theme,
+        "art_style": art_style,
+        "voice_features_0_to_10": voice_dna,
+        "duration_seconds": round(duration, 1),
+        "transcript": transcript or None,
+    })
     payload = {
         "model": SPARK_MODEL,
         "messages": [
@@ -159,25 +141,15 @@ async def write_art_brief(voice_dna: dict, duration: float, theme: str, transcri
         "prompt": prompt[:1500],
     }
 
-
 def _mime_for(raw: bytes) -> str:
-    if raw[:8] == b"\x89PNG\r\n\x1a\n":
-        return "image/png"
-    if raw[:3] == b"\xff\xd8\xff":
-        return "image/jpeg"
-    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP":
-        return "image/webp"
+    if raw[:8] == b"\x89PNG\r\n\x1a\n": return "image/png"
+    if raw[:3] == b"\xff\xd8\xff": return "image/jpeg"
+    if raw[:4] == b"RIFF" and raw[8:12] == b"WEBP": return "image/webp"
     raise MetaAIError("Muse Image returned an unrecognized image format.")
 
-
 async def render_image(prompt: str) -> str:
-    """Muse Image, single-shot generations endpoint. Returns a data URI."""
-    payload = {
-        "model": IMAGE_MODEL,
-        "prompt": prompt,
-        "size": "1024x1024",  # sets the aspect ratio only, per the docs
-        "response_format": "b64_json",
-    }
+    """Generate one image with Muse Image and return a validated data URI."""
+    payload = {"model": IMAGE_MODEL, "prompt": prompt, "size": "1024x1024", "response_format": "b64_json"}
     try:
         async with _client(IMAGE_TIMEOUT) as client:
             response = await client.post("images/generations", json=payload)

@@ -1,99 +1,145 @@
-"""Voice-to-art pipeline: Meta AI first, reotoi's own renderer as the safety net."""
-
+"""Voice-to-art pipeline with explicit engine provenance and labelled fallbacks."""
 from __future__ import annotations
-
+import base64
 import logging
-import re
+import math
 import uuid
-
+from urllib.parse import unquote
 from services import meta_ai
 from services.art_generator import build_visual_parameters, choose_theme, render_svg
 
 logger = logging.getLogger("reotoi.pipeline")
-
-LOCAL = "reotoi local renderer"
-POSITIVE = set("love loved happy great good wonderful amazing excited joy beautiful grateful calm peaceful hope proud fun enjoy bright smile warm lucky thank".split())
-NEGATIVE = set("sad angry hate bad terrible awful tired worried afraid anxious stress lonely hurt dark broken lost fear cry pain empty sorry tense".split())
+OUTPUT_MODES = {"svg", "muse_image", "fusion"}
+ART_STYLES = {"painterly", "ink_wash", "cut_paper", "luminous_surrealism", "generative_linework", "surprise"}
 
 
-def _sentiment(text: str | None) -> float:
-    words = re.findall(r"[a-z']+", (text or "").lower())
-    pos, neg = sum(w in POSITIVE for w in words), sum(w in NEGATIVE for w in words)
-    return (pos - neg) / (pos + neg) if pos + neg else 0.0
-
-
-def _mood(dna: dict, sentiment: float) -> str:
-    arousal = (dna.get("energy", 5) + dna.get("rhythm", 5)) / 20
-    if sentiment > 0.2:
-        return "joyful" if arousal > 0.5 else "warm"
-    if sentiment < -0.2:
-        return "tense" if arousal > 0.5 else "somber"
-    return "driven" if arousal > 0.6 else "quiet" if arousal < 0.3 else "steady"
-
-
-def local_brief(dna: dict, theme: str, transcript: str | None) -> dict:
-    """Specific, feature-driven fallback used when Muse Spark is unavailable."""
+def _local_brief(dna: dict, theme: str, style: str) -> dict:
     pitch, energy, rhythm, variation, pause = (dna.get(k, 5) for k in ("pitch", "energy", "rhythm", "variation", "pause"))
-    sentiment = _sentiment(transcript)
-    mood = _mood(dna, sentiment)
     colors = "deep indigo, charcoal and burnt amber" if pitch < 4 else "teal, sand and soft coral" if pitch < 7 else "pale gold, sky blue and white"
-    prompt = (
-        f"A {theme} composition in {colors}, {'densely layered' if energy > 6 else 'moderately filled' if energy > 3 else 'sparse'} "
-        f"with {'quick, repeated marks' if rhythm > 6 else 'slow sweeping forms'}, {'high contrast' if variation > 6 else 'gentle contrast'}, "
-        f"{'wide open negative space' if pause > 6 else 'little empty space'}, a {mood} mood, soft directional light, "
-        "painterly texture, no text or letters."
-    )
-    return {"title": f"{mood.capitalize()} {theme}", "mood": mood, "sentiment": sentiment, "prompt": prompt}
+    style_names = {
+        "painterly": "expressive painting with visible brush gestures and layered pigment",
+        "ink_wash": "fluid ink contours with translucent washes and paper texture",
+        "cut_paper": "layered cut-paper shapes with tactile edges and dimensional overlap",
+        "luminous_surrealism": "luminous surreal forms, unusual scale and dreamlike light",
+        "generative_linework": "intricate repeated linework and fine flowing patterns",
+        "surprise": "a distinctive visual technique chosen to suit the voice",
+    }
+    prompt = (f"A {theme} composition in {colors}, made as {style_names.get(style, style_names['surprise'])}. "
+              f"Use {'dense layers' if energy > 6 else 'balanced spacing' if energy > 3 else 'sparse elements'}, "
+              f"{'repeated quick marks' if rhythm > 6 else 'slow flowing shapes'}, "
+              f"{'strong contrast' if variation > 6 else 'gentle contrast'}, and "
+              f"{'generous negative space' if pause > 6 else 'connected forms'}. No text or lettering.")
+    return {"title": f"{theme.title()} Voice Study", "mood": "creative study", "sentiment": 0.0, "prompt": prompt}
 
 
-async def create_artwork(*, features: dict, voice_dna: dict, theme: str, audio_path: str) -> dict:
-    resolved = choose_theme(theme)
-    engine = {"transcription": LOCAL + " (not run)", "prompt": LOCAL, "image": LOCAL}
+def _compose_fusion(image_uri: str, features: dict, artwork_id: str) -> str:
+    """Place an SVG vector overlay above the Muse Image raster in one SVG document."""
+    pitch = float(features.get("pitch", 0.5))
+    energy = float(features.get("energy", 0.5))
+    rhythm = float(features.get("rhythm", 0.5))
+    variation = float(features.get("variation", 0.5))
+    pause = float(features.get("pause", 0.3))
+    accent = "#f0c987" if pitch < .45 else "#8de0d0" if pitch < .7 else "#d4c6ff"
+    secondary = "#ffffff" if variation > .45 else "#26364d"
+    amp = 12 + energy * 32
+    cycles = 2.2 + rhythm * 6
+    points = []
+    for i in range(121):
+        x = 40 + (720 * i / 120)
+        y = 400 + math.sin((i / 120) * math.tau * cycles) * amp + math.sin((i / 120) * math.pi * 2) * (pause * 12)
+        points.append(f"{x:.1f},{y:.1f}")
+    path = "M " + " L ".join(points)
+    # Voice-linked graphic annotations remain legible and intentionally transparent.
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img">'
+           f'<title>reotoi Fusion artwork</title><desc>Muse Image artwork with a transparent SVG overlay shaped by measured voice characteristics.</desc>'
+           f'<image href="{image_uri}" x="0" y="0" width="800" height="800" preserveAspectRatio="xMidYMid slice"/>'
+           f'<path d="{path}" fill="none" stroke="{accent}" stroke-width="{1.8 + variation*2.0:.1f}" opacity="0.8"/>'
+           f'<circle cx="400" cy="400" r="{65 + energy*85:.1f}" fill="none" stroke="{secondary}" stroke-width="1.5" opacity="0.42"/>'
+           f'<circle cx="400" cy="400" r="{98 + rhythm*95:.1f}" fill="none" stroke="{accent}" stroke-width="1.2" stroke-dasharray="{2 + rhythm*7:.1f} 12" opacity="0.64"/>'
+           f'<path d="M 75 95 L 120 95 M 75 95 L 75 140 M 725 95 L 680 95 M 725 95 L 725 140 M 75 705 L 120 705 M 75 705 L 75 660 M 725 705 L 680 705 M 725 705 L 725 660" stroke="{accent}" stroke-width="2" fill="none" opacity="0.8"/>'
+           f'</svg>')
+    return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
+
+async def create_artwork(*, features: dict, voice_dna: dict, theme: str, art_style: str, output_mode: str, audio_path: str) -> dict:
+    """Create SVG, Muse Image, or genuine Muse Image + SVG-overlay Fusion."""
+    if output_mode not in OUTPUT_MODES:
+        raise ValueError("Invalid output mode.")
+    if art_style not in ART_STYLES:
+        raise ValueError("Invalid art style.")
+    resolved_theme = choose_theme(theme)
+    configured = meta_ai.is_configured()
     transcript = None
+    brief = _local_brief(voice_dna, resolved_theme, art_style)
+    engine = {"transcription": "Not used", "prompt": "Local prompt", "image": "Not used"}
+    notes = []
 
-    if meta_ai.is_configured():
+    # The SVG-only mode never makes a paid image-generation request.
+    if output_mode in {"muse_image", "fusion"} and configured:
         try:
             transcript = await meta_ai.transcribe(audio_path) or None
             engine["transcription"] = meta_ai.VOICE_MODEL
         except meta_ai.MetaAIError as exc:
+            engine["transcription"] = "Unavailable"
             logger.warning("Muse Voice Transcribe unavailable: %s", exc)
-            engine["transcription"] = "unavailable"
-
-    brief = None
-    if meta_ai.is_configured():
         try:
-            brief = await meta_ai.write_art_brief(voice_dna, features.get("duration", 0.0), resolved, transcript)
+            brief = await meta_ai.write_art_brief(voice_dna, features.get("duration", 0.0), resolved_theme, transcript, art_style)
             engine["prompt"] = meta_ai.SPARK_MODEL
         except meta_ai.MetaAIError as exc:
+            engine["prompt"] = "Local prompt (Muse Spark unavailable)"
             logger.warning("Muse Spark unavailable: %s", exc)
-    if brief is None:
-        brief = local_brief(voice_dna, resolved, transcript)
-    brief["mood"] = brief.get("mood") or _mood(voice_dna, brief.get("sentiment", 0.0))
-    brief["title"] = brief.get("title") or f"{brief['mood'].capitalize()} {resolved}"
 
-    artwork_url = None
-    if meta_ai.is_configured():
+    image_uri = None
+    if output_mode in {"muse_image", "fusion"} and configured:
         try:
-            artwork_url = await meta_ai.render_image(brief["prompt"])
+            image_uri = await meta_ai.render_image(brief["prompt"])
             engine["image"] = meta_ai.IMAGE_MODEL
         except meta_ai.MetaAIError as exc:
             logger.warning("Muse Image unavailable: %s", exc)
+            notes.append("Muse Image was unavailable; a local SVG fallback was used instead.")
+    elif output_mode in {"muse_image", "fusion"}:
+        notes.append("Meta Model API is not configured; a local SVG fallback was used instead.")
 
-    if artwork_url:
+    if output_mode == "svg":
+        artwork_id, artwork_url, parameters = render_svg(features, resolved_theme)
+        actual_mode = "svg"
+        artwork_engine = "Local SVG renderer"
+        notes.append("This is locally rendered vector artwork. The selected AI art style is not fully reproduced by the SVG renderer.")
+    elif image_uri and output_mode == "muse_image":
         artwork_id = str(uuid.uuid4())
-        parameters = build_visual_parameters(features, resolved)
+        artwork_url = image_uri
+        parameters = build_visual_parameters(features, resolved_theme)
+        actual_mode = "muse_image"
+        artwork_engine = "Muse Image"
+        notes.append("Muse Image generated the raster artwork using the selected theme, art style and available voice information.")
+    elif image_uri and output_mode == "fusion":
+        artwork_id = str(uuid.uuid4())
+        artwork_url = _compose_fusion(image_uri, features, artwork_id)
+        parameters = build_visual_parameters(features, resolved_theme)
+        actual_mode = "fusion"
+        artwork_engine = "Fusion (Muse Image + SVG overlay)"
+        notes.append("Fusion combines Muse Image raster artwork with a transparent, voice-driven SVG vector overlay.")
     else:
-        artwork_id, artwork_url, parameters = render_svg(features, resolved)
+        artwork_id, artwork_url, parameters = render_svg(features, resolved_theme)
+        actual_mode = "svg_fallback"
+        artwork_engine = "Local SVG renderer"
+        notes.append("Requested AI output was unavailable. This result is SVG fallback artwork, not Muse Image or Fusion output.")
 
     return {
         "artwork_id": artwork_id,
         "artwork_url": artwork_url,
-        "theme": resolved,
+        "theme": resolved_theme,
+        "art_style": art_style,
+        "output_mode_requested": output_mode,
+        "output_mode_used": actual_mode,
+        "artwork_engine": artwork_engine,
+        "source_note": " ".join(notes),
         "visual_parameters": parameters,
-        "title": brief["title"],
-        "mood": brief["mood"],
-        "prompt": brief["prompt"],
+        "title": brief.get("title") or f"{resolved_theme.title()} Voice Study",
+        "mood": brief.get("mood") or "creative study",
+        "prompt": brief.get("prompt", ""),
         "transcript": transcript,
         "engine": engine,
-        "meta_ai": meta_ai.is_configured(),
+        "meta_ai": configured,
+        "fusion": actual_mode == "fusion",
     }

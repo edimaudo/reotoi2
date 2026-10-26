@@ -1,16 +1,24 @@
 {% extends "base.html" %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', path='css/reotoi-ui.css') }}">
+{% endblock %}
+
 {% block content %}
-<section class="creation-page" aria-labelledby="create-title" data-max-seconds="{{ max_recording_seconds }}">
+<section class="creation-page" data-max-seconds="{{ max_recording_seconds }}" aria-labelledby="create-title">
     <div class="section-heading section-heading--wide">
+        <h1 id="create-title">Speak. Shape. Create.</h1>
+        <p>Choose what the artwork is about, how it should look, and which output engine to use.</p>
     </div>
 
     <div class="creation-grid">
         <section class="creation-panel" aria-labelledby="input-title">
             <div class="panel-header">
                 <div>
-                    <h2 id="input-title">Select a theme & Speak</h2>
+                    <p class="eyebrow">01 · YOUR INPUT</p>
+                    <h2 id="input-title">Art direction &amp; voice</h2>
                 </div>
+                <span class="time-limit">Up to {{ max_recording_seconds }} seconds</span>
             </div>
 
             <fieldset class="theme-fieldset">
@@ -29,12 +37,33 @@
                 </div>
             </fieldset>
 
+            <fieldset class="choice-fieldset" aria-describedby="art-style-help">
+                <legend>Choose an art style</legend>
+                <label for="art-style" class="field-label">Visual technique</label>
+                <select id="art-style" name="art_style">
+                    {% for style in art_styles %}<option value="{{ style.value }}" {% if style.value == 'painterly' %}selected{% endif %}>{{ style.label }}</option>{% endfor %}
+                </select>
+                <p id="art-style-help" class="choice-help">Theme is the subject or world; art style is the technique. SVG fallback art may not fully reproduce an AI style.</p>
+            </fieldset>
+
+            <fieldset class="choice-fieldset output-mode-fieldset" aria-describedby="output-mode-help">
+                <legend>Choose an output mode</legend>
+                <div class="output-mode-options">
+                {% for mode in output_modes %}
+                    <label class="output-mode-option">
+                        <input type="radio" name="output_mode" value="{{ mode.value }}" {% if mode.value == 'svg' %}checked{% endif %}>
+                        <span><strong>{{ mode.label }}</strong><small>{{ mode.description }}</small></span>
+                    </label>
+                {% endfor %}
+                </div>
+                <p id="output-mode-help" class="choice-help">Muse Image and Fusion use the Meta Model API when configured. If image generation fails, the result identifies the actual SVG fallback.</p>
+            </fieldset>
+
             <div class="recorder" id="recorder">
                 <div class="record-visual" aria-hidden="true">
                     <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
                 <p class="recorder-status" id="recorder-status">Ready to record (max. {{ max_recording_seconds }} seconds)</p>
-                <!-- <p class="recorder-status" id="recorder-status">Ready to record</p> -->
                 <p class="recorder-timer" id="recorder-timer">00:00</p>
                 <p class="recorder-help" id="recorder-help">Your browser will ask for microphone permission.</p>
 
@@ -65,7 +94,9 @@
 
 <section class="result-section" id="result-section" aria-labelledby="result-title" hidden>
     <div class="section-heading section-heading--wide">
-        <h2 id="result-title">Your Artwork</h2>
+        <p class="eyebrow">02 · YOUR ARTWORK</p>
+        <h2 id="result-title">Your artwork</h2>
+        <p id="result-message">Your voice has been translated into visual parameters.</p>
     </div>
 
     <div class="result-grid">
@@ -80,64 +111,34 @@
             <div class="voice-dna-card">
                 <div class="panel-header">
                     <div>
+                        <p class="eyebrow">VOICE DNA</p>
                         <h3>What shaped this piece</h3>
                     </div>
                 </div>
+                <p class="choice-help">Pitch estimates fundamental frequency; energy reflects signal level; rhythm uses onset strength as a rhythm proxy; variation reflects pitch spread; pauses estimate low-energy frames. Scores are visual inputs, not emotion or health assessments.</p>
                 <div id="voice-dna-bars" class="dna-bars"></div>
             </div>
 
             <div class="result-meta">
                 <p><span>Theme</span><strong id="result-theme">—</strong></p>
                 <p><span>Input</span><strong id="result-input">—</strong></p>
-                <p><span>Mood</span><strong id="result-mood">—</strong></p>
-            </div>
-
-            <div class="voice-dna-card">
-                <div class="panel-header">
-                    <div><h3>What Meta AI heard and imagined</h3></div>
-                </div>
-                <dl class="feature-list" style="margin-top:0">
-                    <div><dt>Transcript</dt><dd id="result-transcript">—</dd></div>
-                    <div><dt>Image prompt</dt><dd id="result-prompt">—</dd></div>
-                    <div><dt>Made with</dt><dd id="result-engine">—</dd></div>
-                </dl>
+                <p><span>Art style</span><strong id="result-art-style">—</strong></p>
+                <p><span>Mode selected</span><strong id="result-output-mode">—</strong></p>
+                <p><span>Actual engine</span><strong id="result-engine">—</strong></p>
             </div>
 
             <div class="result-actions">
                 <button type="button" class="button button--primary" id="save-button">Save to gallery</button>
                 <a class="button button--secondary is-disabled" id="download-button" aria-disabled="true">Download</a>
-                <button type="button" class="button button--secondary" id="clear-button">Clear artwork</button>
             </div>
-            <p class="fine-print" id="save-status" aria-live="polite"></p>
+            <p class="fine-print save-status" id="save-status" aria-live="polite"></p>
+            <p class="source-note" id="result-source-note" role="status"></p>
+            <details class="prompt-details"><summary>View prompt and art-direction details</summary><p id="result-prompt"></p></details>
         </div>
     </div>
 </section>
-
-<dialog
-    id="clear-artwork-modal"
-    class="confirm-modal"
-    aria-labelledby="clear-artwork-title"
-    aria-describedby="clear-artwork-description"
->
-    <div class="confirm-modal__content">
-        <h3 id="clear-artwork-title">Would you like to clear the artwork?</h3>
-        <p id="clear-artwork-description">
-            This will remove the current artwork and clear the audio used to create it from this page.
-            Artwork already saved to your gallery will not be deleted.
-        </p>
-
-        <div class="result-actions">
-            <button type="button" class="button button--primary" id="clear-artwork-confirm">
-                Clear artwork
-            </button>
-            <button type="button" class="button button--secondary" id="clear-artwork-cancel">
-                Keep artwork
-            </button>
-        </div>
-    </div>
-</dialog>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', path='js/app.js') }}"></script>
+<script src="{{ url_for('static', path='js/app.js') }}" defer></script>
 {% endblock %}

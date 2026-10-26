@@ -1,1 +1,1 @@
-"""reotoi application services."""
+"""Business logic services for reotoi."""

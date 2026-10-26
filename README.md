@@ -1,98 +1,50 @@
-# reotoi | Voice Art
+# reotoi · voice art
 
-Turn your voice into visual art.
+reotoi turns a short voice recording into original artwork. It is a server-rendered FastAPI application with vanilla JavaScript, HTML and CSS for the browser UI.
 
-*The name **reotoi** comes from the Māori language: reo (voice) and toi (art).*
+## Output modes
 
-## How it works
+- **SVG only** — uses the local procedural SVG renderer; no Muse Image generation call is made.
+- **Muse Image only** — requests a raster image from Muse Image when the Meta Model API is configured.
+- **Fusion** — combines Muse Image output with a transparent, voice-driven SVG vector overlay.
 
-```
-microphone / audio file
-        │  (browser converts to mono 16 kHz PCM WAV)
-        ▼
- librosa voice analysis ──► Voice DNA (pitch, energy, rhythm, variation, pause)
-        │
-        ├─► Muse Voice Transcribe  ──► transcript
-        ├─► Muse Spark             ──► title, mood and an image prompt
-        └─► Muse Image             ──► the artwork
-                 │
-                 └─ if any Meta call fails, reotoi falls back (see below)
-```
+If an AI image request cannot run, the application produces a local SVG fallback and labels the actual renderer in the result. It never labels a fallback as Muse Image or Fusion.
 
-| Step | Model | Endpoint |
-|------|-------|----------|
-| Transcribe | `muse-voice-transcribe-1.0` | `POST /v1/asr/transcribe` |
-| Write the prompt | `muse-spark-1.3` (Standard mode) | `POST /v1/chat/completions` |
-| Render | `muse-image-1.0` | `POST /v1/images/generations` |
+## Theme and style
 
-Base URL `https://api.meta.ai/v1`, bearer auth. Get a key at https://dev.meta.ai.
+Theme defines the subject/world (Abstract, Nature, Cosmos, Architecture, Organic, Geometric, or Surprise me). Art style defines the visual technique: Expressive painting, Ink & wash, Cut-paper collage, Luminous surrealism, Intricate generative linework, or Surprise me. Styles are passed to Muse Spark when the AI art pipeline is used. The local SVG fallback does not fully reproduce those styles; the UI says so.
 
-**Fallbacks.** No key, or a failed call, never breaks the app:
-transcription is skipped, a feature-driven local prompt replaces Muse Spark, and
-the original procedural SVG renderer (`services/art_generator.py`) replaces Muse Image.
-The result card shows which engine produced each step.
+## Voice DNA
 
-**Privacy.** The transcript and Voice DNA are sent to Meta. Muse Spark runs in Standard
-mode, where Meta says content is not used for training. Audio is only sent to Muse Voice
-Transcribe. Check Meta's geographic availability policy for your region.
+The local analysis reports normalized pitch, energy, rhythm, variation and pause estimates. The values are visual inputs, not a clinical emotion assessment. Onset strength is used only as a rhythm proxy; it is **not** described as speech rate because the application does not compute words per minute.
 
-## Run it
+## Run locally
+
+Use Python 3.11 or newer.
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env        # add MODEL_API_KEY, set SESSION_SECRET
-python main.py              # http://127.0.0.1:8000
-```
-
-### Demo login
-
-| Username | Password |
-|----------|----------|
-| `demo` | `reotoi-demo` |
-
-Override with `DEMO_USERNAME` / `DEMO_PASSWORD`, and hide the hint on the login page with
-`SHOW_DEMO_CREDENTIALS=0`. This is a single demo account for trying the app; replace
-`services/auth.py` with a real user store before accepting real users.
-
-### Tests
-
-```bash
+python -m venv .venv
+source .venv/bin/activate
 pip install -r requirements-dev.txt
-pytest
+cp .env.example .env
+# Set SESSION_SECRET and the demo credentials in .env before deployment.
+uvicorn main:app --reload
 ```
 
-Tests mock the Meta API, covering login, the full pipeline and each fallback path.
+Open `http://127.0.0.1:8000`. The demo login defaults to `demo` / `reotoi-demo` only when environment overrides are not supplied. Demo credentials are displayed when `SHOW_DEMO_CREDENTIALS=1` (the default is intentionally convenient for local demonstration, but set it to `0` outside a demo). This is prototype authentication, not a production identity system. Use a strong random `SESSION_SECRET`; the built-in `dev-only-change-me` session signing fallback is only for local development. Set `SESSION_HTTPS_ONLY=1` behind HTTPS.
 
-## Configuration
+## Meta Model API settings
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `MODEL_API_KEY` | Meta Model API key | none (local mode) |
-| `META_SPARK_MODEL` | Prompt model | `muse-spark-1.3` |
-| `META_IMAGE_MODEL` | Image model | `muse-image-1.0` |
-| `META_VOICE_MODEL` | Transcription model | `muse-voice-transcribe-1.0` |
-| `SESSION_SECRET` | Cookie signing key | dev value, change it |
-| `SESSION_HTTPS_ONLY` | Secure cookies | off |
+Set `MODEL_API_KEY` (or `META_API_KEY`) to enable Muse Voice Transcribe, Muse Spark, and Muse Image. `META_API_BASE` defaults to `https://api.meta.ai/v1`. Model IDs and timeouts can be overridden in the environment; see `.env.example`. Calls are made only for Muse Image and Fusion modes. The SVG-only mode is local. The current tests exercise input validation, Fusion composition and truthful fallback labels. They do not validate live credentials, API availability, or image quality.
 
-## Project structure
+## Gallery and persistence
 
-```
-reotoi/
-├── main.py                  routes, sessions, /login, /generate
-├── requirements.txt
-├── requirements-dev.txt
-├── .env.example
-├── vercel.json
-├── services/
-│   ├── auth.py              demo account and safe redirects
-│   ├── meta_ai.py           Muse Voice Transcribe, Muse Spark, Muse Image
-│   ├── pipeline.py          Meta first, local fallbacks
-│   ├── voice_features.py    librosa analysis
-│   ├── art_generator.py     procedural SVG fallback
-│   ├── audio_conversion.py
-│   └── gallery_service.py
-├── templates/               base, index, login, app, gallery, 404, 500
-├── static/                  css and js
-└── tests/test_app.py
-```
+Saved artwork is stored in the browser's `localStorage` under `reotoi-gallery`. It is local to that browser and device; it is not a server-side account gallery and will not automatically sync across devices. Clearing browser site data can remove saved pieces.
+
+## Accessibility
+
+The interface uses Inter, keyboard-visible focus styles, a skip link, screen-reader labels and descriptions, responsive layouts, light/dark themes and Small/Medium/Large text-size controls. Theme and text-size preferences persist in browser `localStorage`. These features are not a formal WCAG conformance certification; perform a keyboard, screen-reader, contrast and zoom/reflow audit before making a compliance claim.
+
+## Deployment and security notes
+
+`vercel.json` uses Vercel's Python runtime for `main.py`. Configure all secrets in the deployment environment rather than committing `.env`. The demo username/password and cookie signing secret are configuration defaults for a prototype; do not use them for real accounts. The local upload is size- and duration-limited, normalized to WAV before analysis, and removed from the temporary directory after processing. Logs should not include raw audio or API keys.

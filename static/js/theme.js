@@ -1,52 +1,26 @@
 (() => {
   "use strict";
-
   const root = document.documentElement;
-  const themeKey = "reotoi-theme";
-  const fontKey = "reotoi-font-size";
-
-  const validThemes = new Set(["light", "dark"]);
-  const validFontSizes = new Set(["small", "medium", "large"]);
-
-  function applyTheme(theme) {
-    if (!validThemes.has(theme)) return;
+  const themeToggle = document.getElementById("theme-toggle");
+  const themeIcon = document.getElementById("theme-icon");
+  const fontButtons = document.querySelectorAll(".control-button[data-font-size]");
+  const applyTheme = (value) => {
+    const theme = value === "dark" ? "dark" : "light";
     root.dataset.theme = theme;
-    const toggle = document.getElementById("theme-toggle");
-    const icon = document.getElementById("theme-icon");
-    if (toggle) toggle.setAttribute("aria-pressed", String(theme === "dark"));
-    if (icon) icon.textContent = theme === "dark" ? "☀" : "☾";
-    localStorage.setItem(themeKey, theme);
-  }
-
-  function applyFontSize(size) {
-    if (!validFontSizes.has(size)) return;
+    if (themeToggle) themeToggle.setAttribute("aria-pressed", String(theme === "dark"));
+    if (themeIcon) themeIcon.textContent = theme === "dark" ? "☀" : "☾";
+    try { localStorage.setItem("reotoi-theme", theme); } catch (_) {}
+  };
+  const applyFontSize = (value) => {
+    const size = ["small", "medium", "large"].includes(value) ? value : "medium";
     root.dataset.fontSize = size;
-    document.querySelectorAll("[data-font-size]").forEach((button) => {
-      button.classList.toggle("is-active", button.dataset.fontSize === size);
-    });
-    localStorage.setItem(fontKey, size);
-  }
-
-  const savedTheme = localStorage.getItem(themeKey);
-  const savedFont = localStorage.getItem(fontKey);
-  const preferredTheme =
-    savedTheme ||
-    (window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light");
-
-  applyTheme(preferredTheme);
-  applyFontSize(validFontSizes.has(savedFont) ? savedFont : "medium");
-
-  document.getElementById("theme-toggle")?.addEventListener("click", () => {
-    applyTheme(root.dataset.theme === "dark" ? "light" : "dark");
-  });
-
-  document
-    .querySelectorAll(".control-button[data-font-size]")
-    .forEach((button) => {
-      button.addEventListener("click", () =>
-        applyFontSize(button.dataset.fontSize)
-      );
-    });
+    fontButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.fontSize === size));
+    try { localStorage.setItem("reotoi-font-size", size); } catch (_) {}
+  };
+  try {
+    applyTheme(localStorage.getItem("reotoi-theme") || root.dataset.theme);
+    applyFontSize(localStorage.getItem("reotoi-font-size") || root.dataset.fontSize);
+  } catch (_) { applyTheme("light"); applyFontSize("medium"); }
+  themeToggle?.addEventListener("click", () => applyTheme(root.dataset.theme === "dark" ? "light" : "dark"));
+  fontButtons.forEach((button) => button.addEventListener("click", () => applyFontSize(button.dataset.fontSize)));
 })();
