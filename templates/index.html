@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="hero" aria-labelledby="hero-title">
+    <div class="hero__copy">
+        <p class="eyebrow"></p>
+        <h1 id="hero-title">Create art using your voice.</h1>
+        <p class="hero__lede">
+            reotoi analyzes your voice characteristics and turns it into a visual masterpiece.
+        </p>
+        <div class="hero__actions">
+            <a class="button button--primary" href="/create">Create artwork</a>
+            <a class="button button--secondary" href="/gallery">Explore gallery</a>
+        </div>
+    </div>
+
+    <div class="hero__visual" aria-label="Illustration showing voice transformed into abstract visual art" role="img">
+        <div class="voice-wave voice-wave--one"></div>
+        <div class="voice-wave voice-wave--two"></div>
+        <div class="voice-wave voice-wave--three"></div>
+        <div class="voice-orbit"></div>
+        <div class="voice-core"></div>
+    </div>
+</section>
+
+<section class="principles" aria-labelledby="how-title">
+    <div class="section-heading">
+        
+        <h2 id="how-title">How it works.</h2>
+        
+    </div>
+
+    <div class="principle-grid">
+        <article class="principle-card">
+            
+            <h3>Speak</h3>
+            <p>Use an audio file or speak using your microphone for up to 30 seconds.</p>
+        </article>
+        <article class="principle-card">
+            
+            <h3>Analyze</h3>
+            <p>It will analyze your Voice characteristic to create a unique Voice DNA.</p>
+        </article>
+        <article class="principle-card">
+            
+            <h3>Create</h3>
+            <p>Use your Voice DNA and chosen visual theme and create your masterpiece.</p>
+        </article>
+    </div>
+</section>
+
+
+{% endblock %}

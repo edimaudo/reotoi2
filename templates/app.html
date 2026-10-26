@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="creation-page" aria-labelledby="create-title" data-max-seconds="{{ max_recording_seconds }}">
+    <div class="section-heading section-heading--wide">
+    </div>
+
+    <div class="creation-grid">
+        <section class="creation-panel" aria-labelledby="input-title">
+            <div class="panel-header">
+                <div>
+                    <h2 id="input-title">Select a theme & Speak</h2>
+                </div>
+            </div>
+
+            <fieldset class="theme-fieldset">
+                <legend>Choose a visual theme</legend>
+                <div class="theme-options">
+                    {% for theme in themes %}
+                    <label class="theme-option">
+                        <input type="radio" name="theme" value="{{ theme }}" {% if theme == 'abstract' %}checked{% endif %}>
+                        <span>{{ theme|replace('-', ' ')|title }}</span>
+                    </label>
+                    {% endfor %}
+                    <label class="theme-option">
+                        <input type="radio" name="theme" value="surprise">
+                        <span>Surprise me</span>
+                    </label>
+                </div>
+            </fieldset>
+
+            <div class="recorder" id="recorder">
+                <div class="record-visual" aria-hidden="true">
+                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <p class="recorder-status" id="recorder-status">Ready to record (max. {{ max_recording_seconds }} seconds)</p>
+                <!-- <p class="recorder-status" id="recorder-status">Ready to record</p> -->
+                <p class="recorder-timer" id="recorder-timer">00:00</p>
+                <p class="recorder-help" id="recorder-help">Your browser will ask for microphone permission.</p>
+
+                <button type="button" class="record-button" id="record-button" aria-describedby="recorder-help recorder-status">
+                    <span class="record-button__icon" aria-hidden="true"></span>
+                    <span id="record-button-label">Start speaking</span>
+                </button>
+            </div>
+
+            <div class="upload-fallback">
+                <div class="divider"><span>or</span></div>
+                <p><strong>Prefer a recording?</strong> Use an audio file instead.</p>
+                <label class="file-button button button--secondary" for="audio-file">Choose audio file</label>
+                <input id="audio-file" type="file" accept="audio/*" hidden>
+                <p class="file-name" id="file-name" aria-live="polite"></p>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="button button--primary" id="generate-button" disabled>
+                    Generate artwork
+                </button>
+            </div>
+
+            <p class="form-error" id="form-error" role="alert" hidden></p>
+        </section>
+    </div>
+</section>
+
+<section class="result-section" id="result-section" aria-labelledby="result-title" hidden>
+    <div class="section-heading section-heading--wide">
+        <h2 id="result-title">Your Artwork</h2>
+    </div>
+
+    <div class="result-grid">
+        <div class="artwork-frame" id="artwork-frame">
+            <div class="artwork-placeholder" id="artwork-placeholder">
+                <span>Artwork will appear here</span>
+            </div>
+            <img id="artwork-image" alt="Generated artwork" hidden>
+        </div>
+
+        <div class="result-data">
+            <div class="voice-dna-card">
+                <div class="panel-header">
+                    <div>
+                        <h3>What shaped this piece</h3>
+                    </div>
+                </div>
+                <div id="voice-dna-bars" class="dna-bars"></div>
+            </div>
+
+            <div class="result-meta">
+                <p><span>Theme</span><strong id="result-theme">—</strong></p>
+                <p><span>Input</span><strong id="result-input">—</strong></p>
+                <p><span>Mood</span><strong id="result-mood">—</strong></p>
+            </div>
+
+            <div class="voice-dna-card">
+                <div class="panel-header">
+                    <div><h3>What Meta AI heard and imagined</h3></div>
+                </div>
+                <dl class="feature-list" style="margin-top:0">
+                    <div><dt>Transcript</dt><dd id="result-transcript">—</dd></div>
+                    <div><dt>Image prompt</dt><dd id="result-prompt">—</dd></div>
+                    <div><dt>Made with</dt><dd id="result-engine">—</dd></div>
+                </dl>
+            </div>
+
+            <div class="result-actions">
+                <button type="button" class="button button--primary" id="save-button">Save to gallery</button>
+                <a class="button button--secondary is-disabled" id="download-button" aria-disabled="true">Download</a>
+                <button type="button" class="button button--secondary" id="clear-button">Clear artwork</button>
+            </div>
+            <p class="fine-print" id="save-status" aria-live="polite"></p>
+        </div>
+    </div>
+</section>
+
+<dialog
+    id="clear-artwork-modal"
+    class="confirm-modal"
+    aria-labelledby="clear-artwork-title"
+    aria-describedby="clear-artwork-description"
+>
+    <div class="confirm-modal__content">
+        <h3 id="clear-artwork-title">Would you like to clear the artwork?</h3>
+        <p id="clear-artwork-description">
+            This will remove the current artwork and clear the audio used to create it from this page.
+            Artwork already saved to your gallery will not be deleted.
+        </p>
+
+        <div class="result-actions">
+            <button type="button" class="button button--primary" id="clear-artwork-confirm">
+                Clear artwork
+            </button>
+            <button type="button" class="button button--secondary" id="clear-artwork-cancel">
+                Keep artwork
+            </button>
+        </div>
+    </div>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/app.js') }}"></script>
+{% endblock %}
