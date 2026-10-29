@@ -67,7 +67,7 @@
   const audioFileInput = document.getElementById("audio-file");
   const fileName = document.getElementById("file-name");
   const formError = document.getElementById("form-error");
-  const artStyleSelect = document.getElementById("art-style");
+  const artStyleChoice = document.querySelector('input[name="art_style"]');
 
   const resultSection = document.getElementById("result-section");
   // Optional: older templates may omit this message element.
@@ -76,6 +76,7 @@
   const resultInput = document.getElementById("result-input");
   const resultArtStyle = document.getElementById("result-art-style");
   const resultOutputMode = document.getElementById("result-output-mode");
+  const resultActualMode = document.getElementById("result-actual-mode");
   const resultEngine = document.getElementById("result-engine");
   const resultSourceNote = document.getElementById("result-source-note");
   const resultPrompt = document.getElementById("result-prompt");
@@ -101,7 +102,7 @@
     audioFileInput,
     fileName,
     formError,
-    artStyleSelect,
+    artStyleChoice,
     resultSection,
     resultTheme,
     resultInput,
@@ -184,7 +185,7 @@
   }
 
   function getArtStyle() {
-    return artStyleSelect?.value || "painterly";
+    return document.querySelector('input[name="art_style"]:checked')?.value || "painterly";
   }
 
   function getOutputMode() {
@@ -194,6 +195,70 @@
   function humanize(value) {
     return String(value || "—").replaceAll("_", " ").replaceAll("-", " ");
   }
+
+  // Keep the three art-direction choices in a short guided flow instead of
+  // presenting every control in one long panel.
+  const setupWizard = document.getElementById("setup-wizard");
+  const voiceInputStage = document.getElementById("voice-input-stage");
+  const setupPanels = Array.from(root.querySelectorAll("[data-step-panel]"));
+  const stepperButtons = Array.from(root.querySelectorAll("[data-step-target]"));
+  const summaryTheme = document.getElementById("summary-theme");
+  const summaryArtStyle = document.getElementById("summary-art-style");
+  const summaryOutputMode = document.getElementById("summary-output-mode");
+
+  function activateSetupStep(stepNumber) {
+    const activeStep = Math.max(1, Math.min(3, Number(stepNumber) || 1));
+    setupPanels.forEach((panel) => {
+      panel.hidden = Number(panel.dataset.stepPanel) !== activeStep;
+    });
+    stepperButtons.forEach((button) => {
+      const buttonStep = Number(button.dataset.stepTarget);
+      const active = buttonStep === activeStep;
+      button.classList.toggle("is-active", active);
+      button.classList.toggle("is-complete", buttonStep < activeStep);
+      if (active) button.setAttribute("aria-current", "step");
+      else button.removeAttribute("aria-current");
+    });
+  }
+
+  function selectedChoiceLabel(name, fallback) {
+    const selected = document.querySelector(`input[name="${name}"]:checked`);
+    const label = selected?.closest(".choice-card")?.querySelector("strong")?.textContent?.trim();
+    return label || fallback;
+  }
+
+  function updateSelectionSummary() {
+    if (summaryTheme) summaryTheme.textContent = selectedChoiceLabel("theme", "Surprise me");
+    if (summaryArtStyle) summaryArtStyle.textContent = selectedChoiceLabel("art_style", "Surprise me");
+    if (summaryOutputMode) summaryOutputMode.textContent = selectedChoiceLabel("output_mode", "SVG only");
+  }
+
+  function enterVoiceInputStage() {
+    updateSelectionSummary();
+    if (setupWizard) setupWizard.hidden = true;
+    if (voiceInputStage) voiceInputStage.hidden = false;
+    voiceInputStage?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function editSetupChoices() {
+    if (voiceInputStage) voiceInputStage.hidden = true;
+    if (setupWizard) setupWizard.hidden = false;
+    activateSetupStep(3);
+    setupWizard?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  stepperButtons.forEach((button) => {
+    button.addEventListener("click", () => activateSetupStep(button.dataset.stepTarget));
+  });
+  root.querySelectorAll("[data-step-next]").forEach((button) => {
+    button.addEventListener("click", () => activateSetupStep(button.dataset.stepNext));
+  });
+  root.querySelectorAll("[data-step-back]").forEach((button) => {
+    button.addEventListener("click", () => activateSetupStep(button.dataset.stepBack));
+  });
+  root.querySelector("[data-setup-finish]")?.addEventListener("click", enterVoiceInputStage);
+  root.querySelector("[data-edit-choices]")?.addEventListener("click", editSetupChoices);
+  activateSetupStep(1);
 
   function updateGenerateState() {
     if (!generateButton) return;
@@ -1140,10 +1205,14 @@
       setElementText(resultInput, data.input_source === "upload" ? "Audio file" : "Microphone");
     }
     if (resultArtStyle) setElementText(resultArtStyle, humanize(data.art_style || getArtStyle()));
+    const outputLabels = { svg: "SVG only", muse_image: "Muse Image only", fusion: "Fusion", svg_fallback: "SVG fallback" };
     if (resultOutputMode) {
-      const used = data.output_mode_requested || getOutputMode();
-      const labels = { svg: "SVG only", muse_image: "Muse Image only", fusion: "Fusion", svg_fallback: "SVG fallback" };
-      setElementText(resultOutputMode, labels[used] || humanize(used));
+      const requested = data.output_mode_requested || getOutputMode();
+      setElementText(resultOutputMode, outputLabels[requested] || humanize(requested));
+    }
+    if (resultActualMode) {
+      const actual = data.output_mode_used || data.output_mode_requested || getOutputMode();
+      setElementText(resultActualMode, outputLabels[actual] || humanize(actual));
     }
     if (resultEngine) setElementText(resultEngine, data.artwork_engine || "Not reported");
     if (resultSourceNote) setElementText(resultSourceNote, data.source_note || "");

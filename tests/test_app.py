@@ -62,3 +62,58 @@ def test_requested_ai_mode_without_key_is_not_mislabeled(monkeypatch, tmp_path):
     assert result["artwork_engine"] == "Local SVG renderer"
     assert result["fusion"] is False
     assert "not Muse Image or Fusion" in result["source_note"]
+
+
+def test_landing_has_no_sign_in_action_or_eyebrow():
+    from fastapi.testclient import TestClient
+
+    response = TestClient(main.app).get("/")
+    assert response.status_code == 200
+    assert 'class="eyebrow"' not in response.text
+    assert 'href="/login?next=/create"' not in response.text
+    assert ">Sign in</a>" not in response.text
+    assert 'aria-label="reotoi home">reotoi</a>' in response.text
+
+
+def test_login_prefills_configured_demo_credentials():
+    from fastapi.testclient import TestClient
+    from services import auth
+
+    response = TestClient(main.app).get("/login")
+    assert response.status_code == 200
+    assert f'value="{auth.DEMO_USERNAME}"' in response.text
+    assert f'value="{auth.DEMO_PASSWORD}"' in response.text
+    assert "The configured demo username and password are prefilled." in response.text
+    assert "SHOW_DEMO_CREDENTIALS" not in response.text
+
+
+def test_authenticated_create_uses_three_step_art_direction():
+    from fastapi.testclient import TestClient
+    from services import auth
+
+    client = TestClient(main.app)
+    login = client.post("/login", data={"username": auth.DEMO_USERNAME, "password": auth.DEMO_PASSWORD}, follow_redirects=False)
+    assert login.status_code == 303
+    response = client.get("/create")
+    assert response.status_code == 200
+    assert 'data-step-panel="1"' in response.text
+    assert 'data-step-panel="2"' in response.text
+    assert 'data-step-panel="3"' in response.text
+    assert "Theme is the subject or world" not in response.text
+    assert "SVG fallback art may not fully reproduce an AI style" not in response.text
+    assert "Stars, nebulae and expansive celestial forms." in response.text
+    assert "Visible brush gestures, layered pigment and tactile texture." in response.text
+
+
+def test_authenticated_header_shows_center_nav_and_account_name():
+    from fastapi.testclient import TestClient
+    from services import auth
+
+    client = TestClient(main.app)
+    client.post("/login", data={"username": auth.DEMO_USERNAME, "password": auth.DEMO_PASSWORD})
+    response = client.get("/create")
+    assert response.status_code == 200
+    assert f'aria-label="Signed in as {auth.DEMO_USERNAME}">{auth.DEMO_USERNAME}</span>' in response.text
+    assert 'href="/create"' in response.text
+    assert 'href="/gallery"' in response.text
+    assert 'class="site-header__right"' in response.text

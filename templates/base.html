@@ -13,21 +13,32 @@
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
+{% set user = request.scope.get('session', {}).get('user') %}
 <header class="site-header">
   <div class="site-header__inner">
-    <a class="brand" href="/" aria-label="reotoi home">reotoi<span aria-hidden="true">.</span></a>
-    {% set user = request.scope.get('session', {}).get('user') %}
+    <a class="brand" href="/" aria-label="reotoi home">reotoi</a>
+    {% if user %}
     <nav class="site-nav" aria-label="Primary navigation">
-      {% if user %}<a href="/create">Create</a><a href="/gallery">Gallery</a><form method="post" action="/logout" class="nav-form"><button type="submit" class="nav-button">Log out</button></form>
-      {% elif request.url.path != '/login' %}<a href="/login">Log in</a>{% endif %}
+      <a href="/create"{% if request.url.path in ['/create', '/app'] %} aria-current="page"{% endif %}>Create</a>
+      <a href="/gallery"{% if request.url.path == '/gallery' %} aria-current="page"{% endif %}>Gallery</a>
     </nav>
-    <div class="site-controls" aria-label="Display controls">
-      <div class="control-group" aria-label="Text size"><span class="control-label">Text</span>
-        <button type="button" class="control-button" data-font-size="small" aria-label="Small text size">A−</button>
-        <button type="button" class="control-button is-active" data-font-size="medium" aria-label="Medium text size">A</button>
-        <button type="button" class="control-button" data-font-size="large" aria-label="Large text size">A+</button>
+    {% endif %}
+    <div class="site-header__right">
+      {% if user %}
+      <div class="site-account" aria-label="Account">
+        <span class="site-user" aria-label="Signed in as {{ user }}">{{ user }}</span>
+        <form method="post" action="/logout" class="nav-form"><button type="submit" class="nav-button">Log out</button></form>
       </div>
-      <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode"><span aria-hidden="true" id="theme-icon">☾</span></button>
+      {% endif %}
+      <div class="site-controls" aria-label="Display controls">
+        <div class="control-group" aria-label="Text size">
+          <span class="control-label">Text</span>
+          <button type="button" class="control-button" data-font-size="small" aria-label="Small text size">A−</button>
+          <button type="button" class="control-button is-active" data-font-size="medium" aria-label="Medium text size">A</button>
+          <button type="button" class="control-button" data-font-size="large" aria-label="Large text size">A+</button>
+        </div>
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" aria-label="Toggle dark mode"><span aria-hidden="true" id="theme-icon">☾</span></button>
+      </div>
     </div>
   </div>
 </header>

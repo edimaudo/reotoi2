@@ -1,15 +1,20 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero" aria-labelledby="hero-title">
-  <div class="hero__copy"><p class="eyebrow">VOICE · ART · EXPERIMENT</p>
+  <div class="hero__copy">
     <h1 id="hero-title">Create art using your voice.</h1>
-    <p class="hero__lede">reotoi maps measurable qualities of your voice into original visual work. Choose the art direction and output engine that suit you.</p>
-    <div class="hero__actions"><a class="button button--primary" href="/create">Create artwork</a><a class="button button--secondary" href="/login?next=/create">Sign in</a></div>
-    <p class="fine-print">Microphone recording or audio upload · Up to 30 seconds</p>
+    <p class="hero__lede">reotoi turns the qualities of your voice into original visual artwork. Choose a visual direction, speak, and see what emerges.</p>
+    <div class="hero__actions"><a class="button button--primary" href="/create">Create artwork</a></div>
+    <p class="fine-print">Record up to 30 seconds or upload an audio file.</p>
   </div>
   <div class="hero__visual" role="img" aria-label="Abstract lines and circles representing voice translated into visual art"><div class="voice-wave voice-wave--one"></div><div class="voice-wave voice-wave--two"></div><div class="voice-wave voice-wave--three"></div><div class="voice-orbit"></div><div class="voice-core"></div></div>
 </section>
-<section class="principles" aria-labelledby="how-title"><div class="section-heading"><p class="eyebrow">THE PROCESS</p><h2 id="how-title">From sound to shape.</h2></div>
-  <div class="principle-grid"><article class="principle-card"><h3>01 · Speak</h3><p>Record a short sample or use a supported audio file.</p></article><article class="principle-card"><h3>02 · Interpret</h3><p>Pitch, energy, rhythm, variation and pauses become visual inputs.</p></article><article class="principle-card"><h3>03 · Create</h3><p>Choose local SVG art, Muse Image, or Fusion combining raster art and a vector overlay.</p></article></div>
+<section class="principles" aria-labelledby="how-title">
+  <div class="section-heading"><h2 id="how-title">From sound to shape.</h2></div>
+  <div class="principle-grid">
+    <article class="principle-card"><h3>Speak</h3><p>Record a short sample or use a supported audio file.</p></article>
+    <article class="principle-card"><h3>Interpret</h3><p>Pitch, energy, rhythm, variation and pauses become visual inputs.</p></article>
+    <article class="principle-card"><h3>Create</h3><p>Choose local SVG art, Muse Image, or Fusion combining raster art and a vector overlay.</p></article>
+  </div>
 </section>
 {% endblock %}

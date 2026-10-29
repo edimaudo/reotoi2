@@ -5,137 +5,108 @@
 {% endblock %}
 
 {% block content %}
-<section class="creation-page" data-max-seconds="{{ max_recording_seconds }}" aria-labelledby="create-title">
-    <div class="section-heading section-heading--wide">
-        <h1 id="create-title">Speak. Shape. Create.</h1>
-        <p>Choose what the artwork is about, how it should look, and which output engine to use.</p>
+<section class="creation-page create-workspace" data-max-seconds="{{ max_recording_seconds }}" aria-labelledby="create-title">
+  <div class="section-heading section-heading--wide create-heading">
+    <h1 id="create-title">Create artwork</h1>
+    <p>Choose a direction, then bring it to life with your voice.</p>
+  </div>
+
+  <div class="creation-flow">
+    <div id="setup-wizard">
+      <ol class="creation-stepper" aria-label="Artwork setup">
+        <li><button type="button" class="creation-stepper__button is-active" data-step-target="1" aria-current="step"><span class="creation-stepper__number">1</span><span>Theme</span></button></li>
+        <li><span class="creation-stepper__connector" aria-hidden="true"></span></li>
+        <li><button type="button" class="creation-stepper__button" data-step-target="2"><span class="creation-stepper__number">2</span><span>Art style</span></button></li>
+        <li><span class="creation-stepper__connector" aria-hidden="true"></span></li>
+        <li><button type="button" class="creation-stepper__button" data-step-target="3"><span class="creation-stepper__number">3</span><span>Output mode</span></button></li>
+      </ol>
+
+      <section class="setup-step" data-step-panel="1" aria-labelledby="theme-step-title">
+        <div class="setup-step__heading"><h2 id="theme-step-title">What should the artwork explore?</h2><p>Pick a subject or visual world for the piece.</p></div>
+        <fieldset class="choice-grid theme-options" aria-label="Visual theme">
+          <legend class="sr-only">Visual theme</legend>
+          {% for theme in themes %}
+          <label class="choice-card theme-card">
+            <input type="radio" name="theme" value="{{ theme.value }}" {% if theme.value == 'abstract' %}checked{% endif %}>
+            <span class="choice-card__content"><strong>{{ theme.label }}</strong><span>{{ theme.description }}</span></span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <div class="step-actions"><span>Step 1 of 3</span><button type="button" class="button button--primary" data-step-next="2">Choose art style <span aria-hidden="true">→</span></button></div>
+      </section>
+
+      <section class="setup-step" data-step-panel="2" aria-labelledby="style-step-title" hidden>
+        <div class="setup-step__heading"><h2 id="style-step-title">How should it look?</h2><p>Choose a visual technique and texture.</p></div>
+        <fieldset class="choice-grid style-options" aria-label="Art style">
+          <legend class="sr-only">Art style</legend>
+          {% for style in art_styles %}
+          <label class="choice-card style-card">
+            <input type="radio" name="art_style" value="{{ style.value }}" {% if style.value == 'painterly' %}checked{% endif %}>
+            <span class="choice-card__content"><strong>{{ style.label }}</strong><span>{{ style.description }}</span></span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <div class="step-actions"><button type="button" class="button button--secondary" data-step-back="1">Back</button><span>Step 2 of 3</span><button type="button" class="button button--primary" data-step-next="3">Choose output <span aria-hidden="true">→</span></button></div>
+      </section>
+
+      <section class="setup-step" data-step-panel="3" aria-labelledby="output-step-title" hidden>
+        <div class="setup-step__heading"><h2 id="output-step-title">Choose your output</h2><p>Decide how the artwork will be rendered.</p></div>
+        <fieldset class="choice-grid output-mode-options" aria-label="Output mode">
+          <legend class="sr-only">Output mode</legend>
+          {% for mode in output_modes %}
+          <label class="choice-card output-mode-option">
+            <input type="radio" name="output_mode" value="{{ mode.value }}" {% if mode.value == 'svg' %}checked{% endif %}>
+            <span class="choice-card__content"><strong>{{ mode.label }}</strong><span>{{ mode.description }}</span></span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        <div class="step-actions"><button type="button" class="button button--secondary" data-step-back="2">Back</button><span>Step 3 of 3</span><button type="button" class="button button--primary" data-setup-finish>Continue to voice input <span aria-hidden="true">→</span></button></div>
+      </section>
     </div>
 
-    <div class="creation-grid">
-        <section class="creation-panel" aria-labelledby="input-title">
-            <div class="panel-header">
-                <div>
-                    <p class="eyebrow">01 · YOUR INPUT</p>
-                    <h2 id="input-title">Art direction &amp; voice</h2>
-                </div>
-                <span class="time-limit">Up to {{ max_recording_seconds }} seconds</span>
-            </div>
-
-            <fieldset class="theme-fieldset">
-                <legend>Choose a visual theme</legend>
-                <div class="theme-options">
-                    {% for theme in themes %}
-                    <label class="theme-option">
-                        <input type="radio" name="theme" value="{{ theme }}" {% if theme == 'abstract' %}checked{% endif %}>
-                        <span>{{ theme|replace('-', ' ')|title }}</span>
-                    </label>
-                    {% endfor %}
-                    <label class="theme-option">
-                        <input type="radio" name="theme" value="surprise">
-                        <span>Surprise me</span>
-                    </label>
-                </div>
-            </fieldset>
-
-            <fieldset class="choice-fieldset" aria-describedby="art-style-help">
-                <legend>Choose an art style</legend>
-                <label for="art-style" class="field-label">Visual technique</label>
-                <select id="art-style" name="art_style">
-                    {% for style in art_styles %}<option value="{{ style.value }}" {% if style.value == 'painterly' %}selected{% endif %}>{{ style.label }}</option>{% endfor %}
-                </select>
-                <p id="art-style-help" class="choice-help">Theme is the subject or world; art style is the technique. SVG fallback art may not fully reproduce an AI style.</p>
-            </fieldset>
-
-            <fieldset class="choice-fieldset output-mode-fieldset" aria-describedby="output-mode-help">
-                <legend>Choose an output mode</legend>
-                <div class="output-mode-options">
-                {% for mode in output_modes %}
-                    <label class="output-mode-option">
-                        <input type="radio" name="output_mode" value="{{ mode.value }}" {% if mode.value == 'svg' %}checked{% endif %}>
-                        <span><strong>{{ mode.label }}</strong><small>{{ mode.description }}</small></span>
-                    </label>
-                {% endfor %}
-                </div>
-                <p id="output-mode-help" class="choice-help">Muse Image and Fusion use the Meta Model API when configured. If image generation fails, the result identifies the actual SVG fallback.</p>
-            </fieldset>
-
-            <div class="recorder" id="recorder">
-                <div class="record-visual" aria-hidden="true">
-                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-                </div>
-                <p class="recorder-status" id="recorder-status">Ready to record (max. {{ max_recording_seconds }} seconds)</p>
-                <p class="recorder-timer" id="recorder-timer">00:00</p>
-                <p class="recorder-help" id="recorder-help">Your browser will ask for microphone permission.</p>
-
-                <button type="button" class="record-button" id="record-button" aria-describedby="recorder-help recorder-status">
-                    <span class="record-button__icon" aria-hidden="true"></span>
-                    <span id="record-button-label">Start speaking</span>
-                </button>
-            </div>
-
-            <div class="upload-fallback">
-                <div class="divider"><span>or</span></div>
-                <p><strong>Prefer a recording?</strong> Use an audio file instead.</p>
-                <label class="file-button button button--secondary" for="audio-file">Choose audio file</label>
-                <input id="audio-file" type="file" accept="audio/*" hidden>
-                <p class="file-name" id="file-name" aria-live="polite"></p>
-            </div>
-
-            <div class="form-actions">
-                <button type="button" class="button button--primary" id="generate-button" disabled>
-                    Generate artwork
-                </button>
-            </div>
-
-            <p class="form-error" id="form-error" role="alert" hidden></p>
-        </section>
-    </div>
+    <section class="voice-input-stage" id="voice-input-stage" aria-labelledby="voice-input-title" hidden>
+      <div class="selection-summary" aria-label="Selected artwork settings">
+        <div><span>Theme</span><strong id="summary-theme">Abstract</strong></div>
+        <div><span>Art style</span><strong id="summary-art-style">Expressive painting</strong></div>
+        <div><span>Output</span><strong id="summary-output-mode">SVG only</strong></div>
+        <button type="button" class="text-button" data-edit-choices>Edit choices</button>
+      </div>
+      <section class="voice-input-panel">
+        <div class="voice-input-heading"><div><h2 id="voice-input-title">Bring it to life</h2><p>Record up to {{ max_recording_seconds }} seconds or upload an audio file.</p></div><span class="time-limit">Max {{ max_recording_seconds }} sec</span></div>
+        <div class="recorder" id="recorder">
+          <div class="record-visual" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+          <p class="recorder-status" id="recorder-status">Ready to record</p>
+          <p class="recorder-timer" id="recorder-timer">00:00</p>
+          <p class="recorder-help" id="recorder-help">Your browser will ask for microphone permission.</p>
+          <button type="button" class="record-button" id="record-button" aria-describedby="recorder-help recorder-status"><span class="record-button__icon" aria-hidden="true"></span><span id="record-button-label">Start speaking</span></button>
+        </div>
+        <div class="upload-fallback">
+          <div class="divider"><span>or</span></div>
+          <p><strong>Use an audio file instead.</strong></p>
+          <label class="file-button button button--secondary" for="audio-file">Choose audio file</label>
+          <input id="audio-file" type="file" accept="audio/*" hidden>
+          <p class="file-name" id="file-name" aria-live="polite"></p>
+        </div>
+        <div class="form-actions"><button type="button" class="button button--primary" id="generate-button" disabled>Generate artwork</button></div>
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+      </section>
+    </section>
+  </div>
 </section>
 
 <section class="result-section" id="result-section" aria-labelledby="result-title" hidden>
-    <div class="section-heading section-heading--wide">
-        <p class="eyebrow">02 · YOUR ARTWORK</p>
-        <h2 id="result-title">Your artwork</h2>
-        <p id="result-message">Your voice has been translated into visual parameters.</p>
+  <div class="section-heading section-heading--wide result-heading"><h2 id="result-title">Your artwork</h2><p id="result-message">Your voice has been translated into visual parameters.</p></div>
+  <div class="result-grid">
+    <div class="artwork-frame" id="artwork-frame"><div class="artwork-placeholder" id="artwork-placeholder"><span>Artwork will appear here</span></div><img id="artwork-image" alt="Generated artwork" hidden></div>
+    <div class="result-data">
+      <div class="voice-dna-card"><div class="panel-header"><h3>What shaped this piece</h3></div><p class="choice-help">Pitch estimates fundamental frequency; energy reflects signal level; rhythm uses onset strength as a rhythm proxy; variation reflects pitch spread; pauses estimate low-energy frames. Scores are visual inputs, not emotion or health assessments.</p><div id="voice-dna-bars" class="dna-bars"></div></div>
+      <div class="result-meta">
+        <p><span>Theme</span><strong id="result-theme">—</strong></p><p><span>Input</span><strong id="result-input">—</strong></p><p><span>Art style</span><strong id="result-art-style">—</strong></p><p><span>Mode requested</span><strong id="result-output-mode">—</strong></p><p><span>Mode produced</span><strong id="result-actual-mode">—</strong></p><p><span>Actual engine</span><strong id="result-engine">—</strong></p>
+      </div>
+      <div class="result-actions"><button type="button" class="button button--primary" id="save-button">Save to gallery</button><a class="button button--secondary is-disabled" id="download-button" aria-disabled="true">Download</a></div>
+      <p class="fine-print save-status" id="save-status" aria-live="polite"></p><p class="source-note" id="result-source-note" role="status"></p><details class="prompt-details"><summary>View prompt and art-direction details</summary><p id="result-prompt"></p></details>
     </div>
-
-    <div class="result-grid">
-        <div class="artwork-frame" id="artwork-frame">
-            <div class="artwork-placeholder" id="artwork-placeholder">
-                <span>Artwork will appear here</span>
-            </div>
-            <img id="artwork-image" alt="Generated artwork" hidden>
-        </div>
-
-        <div class="result-data">
-            <div class="voice-dna-card">
-                <div class="panel-header">
-                    <div>
-                        <p class="eyebrow">VOICE DNA</p>
-                        <h3>What shaped this piece</h3>
-                    </div>
-                </div>
-                <p class="choice-help">Pitch estimates fundamental frequency; energy reflects signal level; rhythm uses onset strength as a rhythm proxy; variation reflects pitch spread; pauses estimate low-energy frames. Scores are visual inputs, not emotion or health assessments.</p>
-                <div id="voice-dna-bars" class="dna-bars"></div>
-            </div>
-
-            <div class="result-meta">
-                <p><span>Theme</span><strong id="result-theme">—</strong></p>
-                <p><span>Input</span><strong id="result-input">—</strong></p>
-                <p><span>Art style</span><strong id="result-art-style">—</strong></p>
-                <p><span>Mode selected</span><strong id="result-output-mode">—</strong></p>
-                <p><span>Actual engine</span><strong id="result-engine">—</strong></p>
-            </div>
-
-            <div class="result-actions">
-                <button type="button" class="button button--primary" id="save-button">Save to gallery</button>
-                <a class="button button--secondary is-disabled" id="download-button" aria-disabled="true">Download</a>
-            </div>
-            <p class="fine-print save-status" id="save-status" aria-live="polite"></p>
-            <p class="source-note" id="result-source-note" role="status"></p>
-            <details class="prompt-details"><summary>View prompt and art-direction details</summary><p id="result-prompt"></p></details>
-        </div>
-    </div>
+  </div>
 </section>
 {% endblock %}
 

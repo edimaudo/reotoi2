@@ -76,7 +76,7 @@
       details.className = "gallery-card__details";
 
       const theme = document.createElement("p");
-      theme.className = "eyebrow";
+      theme.className = "gallery-card__theme";
       theme.textContent = String(item.theme || "surprise").replaceAll("-", " ");
 
       const style = document.createElement("p");

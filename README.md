@@ -2,6 +2,10 @@
 
 reotoi turns a short voice recording into original artwork. It is a server-rendered FastAPI application with vanilla JavaScript, HTML and CSS for the browser UI.
 
+## Art direction setup
+
+The creation page uses a three-step flow: visual theme, art style, and output mode. Each theme and technique includes a short description, and the selected direction is summarized before the user records audio. Themes describe the visual world; art styles describe the technique and texture.
+
 ## Output modes
 
 - **SVG only** — uses the local procedural SVG renderer; no Muse Image generation call is made.
@@ -9,10 +13,6 @@ reotoi turns a short voice recording into original artwork. It is a server-rende
 - **Fusion** — combines Muse Image output with a transparent, voice-driven SVG vector overlay.
 
 If an AI image request cannot run, the application produces a local SVG fallback and labels the actual renderer in the result. It never labels a fallback as Muse Image or Fusion.
-
-## Theme and style
-
-Theme defines the subject/world (Abstract, Nature, Cosmos, Architecture, Organic, Geometric, or Surprise me). Art style defines the visual technique: Expressive painting, Ink & wash, Cut-paper collage, Luminous surrealism, Intricate generative linework, or Surprise me. Styles are passed to Muse Spark when the AI art pipeline is used. The local SVG fallback does not fully reproduce those styles; the UI says so.
 
 ## Voice DNA
 
@@ -31,7 +31,7 @@ cp .env.example .env
 uvicorn main:app --reload
 ```
 
-Open `http://127.0.0.1:8000`. The demo login defaults to `demo` / `reotoi-demo` only when environment overrides are not supplied. Demo credentials are displayed when `SHOW_DEMO_CREDENTIALS=1` (the default is intentionally convenient for local demonstration, but set it to `0` outside a demo). This is prototype authentication, not a production identity system. Use a strong random `SESSION_SECRET`; the built-in `dev-only-change-me` session signing fallback is only for local development. Set `SESSION_HTTPS_ONLY=1` behind HTTPS.
+Open `http://127.0.0.1:8000`. The login screen pre-fills the configured demo username and password. If `DEMO_USERNAME` and `DEMO_PASSWORD` are not set in the environment, the built-in defaults are `demo` / `reotoi-demo`; the `.env.example` file provides a replacement password to encourage local configuration. This is prototype authentication, not a production identity system. Use a strong random `SESSION_SECRET`; the built-in `dev-only-change-me` session signing fallback is only for local development. Set `SESSION_HTTPS_ONLY=1` behind HTTPS.
 
 ## Meta Model API settings
 

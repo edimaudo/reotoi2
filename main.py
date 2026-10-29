@@ -42,6 +42,15 @@ MAX_AUDIO_BYTES = 4 * 1024 * 1024
 MIN_AUDIO_BYTES = 512
 ALLOWED_INPUT_SOURCES = {"microphone", "upload"}
 ALLOWED_THEMES = {"abstract", "nature", "cosmos", "architecture", "organic", "geometric", "surprise"}
+THEME_OPTIONS = [
+    {"value": "abstract", "label": "Abstract", "description": "Colour, shape and movement without a literal subject."},
+    {"value": "nature", "label": "Nature", "description": "Landscapes, plants, water and natural textures."},
+    {"value": "cosmos", "label": "Cosmos", "description": "Stars, nebulae and expansive celestial forms."},
+    {"value": "architecture", "label": "Architecture", "description": "Built spaces, structure and strong silhouettes."},
+    {"value": "organic", "label": "Organic", "description": "Flowing, biomorphic shapes and soft contours."},
+    {"value": "geometric", "label": "Geometric", "description": "Precise shapes, repetition and balanced patterns."},
+    {"value": "surprise", "label": "Surprise me", "description": "Let reotoi choose a visual direction."},
+]
 ART_STYLE_OPTIONS = [
     {"value": "painterly", "label": "Expressive painting", "description": "Visible brush gestures, layered pigment and tactile texture."},
     {"value": "ink_wash", "label": "Ink & wash", "description": "Fluid contours, translucent ink and paper-like washes."},
@@ -125,8 +134,8 @@ async def login_page(request: Request, next: str = "/create") -> Response:
         return RedirectResponse(auth.safe_next(next), status_code=303)
     return templates.TemplateResponse(request=request, name="login.html", context={
         "title": "Log in", "next": auth.safe_next(next), "error": None,
-        "demo_username": auth.DEMO_USERNAME if auth.SHOW_DEMO_CREDENTIALS else None,
-        "demo_password": auth.DEMO_PASSWORD if auth.SHOW_DEMO_CREDENTIALS else None,
+        "demo_username": auth.DEMO_USERNAME,
+        "demo_password": auth.DEMO_PASSWORD,
     })
 
 @app.post("/login", response_class=HTMLResponse)
@@ -138,8 +147,8 @@ async def login_submit(request: Request, username: Annotated[str, Form()] = "", 
     await asyncio.sleep(0.35)
     return templates.TemplateResponse(request=request, name="login.html", context={
         "title": "Log in", "next": auth.safe_next(next), "error": "That username or password is not correct.",
-        "demo_username": auth.DEMO_USERNAME if auth.SHOW_DEMO_CREDENTIALS else None,
-        "demo_password": auth.DEMO_PASSWORD if auth.SHOW_DEMO_CREDENTIALS else None,
+        "demo_username": auth.DEMO_USERNAME,
+        "demo_password": auth.DEMO_PASSWORD,
     }, status_code=401)
 
 @app.post("/logout")
@@ -154,7 +163,7 @@ async def app_page(request: Request) -> Response:
         return login_redirect(request)
     return templates.TemplateResponse(request=request, name="app.html", context={
         "title": "Create artwork", "max_recording_seconds": MAX_RECORDING_SECONDS,
-        "themes": ["abstract", "nature", "cosmos", "architecture", "organic", "geometric"],
+        "themes": THEME_OPTIONS,
         "art_styles": ART_STYLE_OPTIONS, "output_modes": OUTPUT_MODE_OPTIONS,
     })
 
