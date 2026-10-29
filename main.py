@@ -60,9 +60,9 @@ ART_STYLE_OPTIONS = [
     {"value": "surprise", "label": "Surprise me", "description": "Choose a distinctive technique for this piece."},
 ]
 OUTPUT_MODE_OPTIONS = [
-    {"value": "svg", "label": "SVG only", "description": "Procedural vector artwork rendered locally; no image-generation call."},
-    {"value": "muse_image", "label": "Muse Image only", "description": "AI-generated raster artwork, with a clearly labelled SVG fallback if unavailable."},
-    {"value": "fusion", "label": "Fusion", "description": "Muse Image artwork with a transparent, voice-driven SVG overlay."},
+    {"value": "svg", "label": "Vector art", "description": "Locally rendered shapes and lines guided by your voice. Works without image generation."},
+    {"value": "muse_image", "label": "AI image", "description": "An image shaped by your theme and art style. Uses vector art if image generation is unavailable."},
+    {"value": "fusion", "label": "Fusion", "description": "An AI-generated image layered with a transparent, voice-driven vector overlay."},
 ]
 
 
@@ -143,6 +143,7 @@ async def login_submit(request: Request, username: Annotated[str, Form()] = "", 
     if auth.verify_login(username, password):
         request.session.clear()
         request.session["user"] = auth.DEMO_USERNAME
+        request.session["display_name"] = auth.DEMO_DISPLAY_NAME
         return RedirectResponse(auth.safe_next(next), status_code=303)
     await asyncio.sleep(0.35)
     return templates.TemplateResponse(request=request, name="login.html", context={

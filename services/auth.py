@@ -5,6 +5,7 @@ import os
 
 DEMO_USERNAME = os.getenv("DEMO_USERNAME", "demo")
 DEMO_PASSWORD = os.getenv("DEMO_PASSWORD", "reotoi-demo")
+DEMO_DISPLAY_NAME = os.getenv("DEMO_DISPLAY_NAME", "James")
 
 def verify_login(username: str, password: str) -> bool:
     user_ok = hmac.compare_digest((username or "").strip().encode(), DEMO_USERNAME.encode())

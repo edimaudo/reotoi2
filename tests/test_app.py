@@ -44,7 +44,7 @@ def test_svg_mode_is_explicit_local_renderer(monkeypatch, tmp_path):
         theme="cosmos", art_style="painterly", output_mode="svg", audio_path=str(audio_path),
     ))
     assert result["output_mode_used"] == "svg"
-    assert result["artwork_engine"] == "Local SVG renderer"
+    assert result["artwork_engine"] == "Local vector renderer"
     assert result["artwork_url"].startswith("data:image/svg+xml")
     assert result["fusion"] is False
 
@@ -59,9 +59,9 @@ def test_requested_ai_mode_without_key_is_not_mislabeled(monkeypatch, tmp_path):
         theme="cosmos", art_style="ink_wash", output_mode="fusion", audio_path=str(audio_path),
     ))
     assert result["output_mode_used"] == "svg_fallback"
-    assert result["artwork_engine"] == "Local SVG renderer"
+    assert result["artwork_engine"] == "Local vector renderer"
     assert result["fusion"] is False
-    assert "not Muse Image or Fusion" in result["source_note"]
+    assert "not an AI image or Fusion" in result["source_note"]
 
 
 def test_landing_has_no_sign_in_action_or_eyebrow():
@@ -113,7 +113,51 @@ def test_authenticated_header_shows_center_nav_and_account_name():
     client.post("/login", data={"username": auth.DEMO_USERNAME, "password": auth.DEMO_PASSWORD})
     response = client.get("/create")
     assert response.status_code == 200
-    assert f'aria-label="Signed in as {auth.DEMO_USERNAME}">{auth.DEMO_USERNAME}</span>' in response.text
+    assert f'aria-label="Signed in as {auth.DEMO_DISPLAY_NAME}">{auth.DEMO_DISPLAY_NAME}</span>' in response.text
     assert 'href="/create"' in response.text
     assert 'href="/gallery"' in response.text
     assert 'class="site-header__right"' in response.text
+
+
+def test_gallery_copy_and_footer_removal():
+    from fastapi.testclient import TestClient
+    from services import auth
+
+    client = TestClient(main.app)
+    client.post("/login", data={"username": auth.DEMO_USERNAME, "password": auth.DEMO_PASSWORD})
+    response = client.get("/gallery")
+    assert response.status_code == 200
+    assert "Artwork saved in this browser" not in response.text
+    assert "Record your voice or choose an audio file." in response.text
+    assert "then save the artwork here" not in response.text
+    assert 'class="site-footer"' not in response.text
+
+
+def test_create_page_has_recorder_below_stepper_without_numbering_or_brand_name():
+    from fastapi.testclient import TestClient
+    from services import auth
+
+    client = TestClient(main.app)
+    client.post("/login", data={"username": auth.DEMO_USERNAME, "password": auth.DEMO_PASSWORD})
+    response = client.get("/create")
+    assert response.status_code == 200
+    body = response.text
+    assert body.index('id="setup-wizard"') < body.index('id="voice-input-stage"')
+    assert 'id="voice-input-stage" aria-labelledby="voice-input-title" hidden' not in body
+    assert 'creation-stepper__number' not in body
+    assert "Step 1 of 3" not in body and "Step 2 of 3" not in body and "Step 3 of 3" not in body
+    assert 'class="site-footer"' not in body
+    assert "Muse" not in body
+    assert "Vector art" in body
+
+
+def test_display_controls_have_no_visible_text_label():
+    from fastapi.testclient import TestClient
+    from services import auth
+
+    client = TestClient(main.app)
+    client.post("/login", data={"username": auth.DEMO_USERNAME, "password": auth.DEMO_PASSWORD})
+    response = client.get("/create")
+    assert response.status_code == 200
+    assert '<span class="control-label">Text</span>' not in response.text
+    assert 'aria-label="Font size"' in response.text

@@ -26,13 +26,13 @@
     <div class="site-header__right">
       {% if user %}
       <div class="site-account" aria-label="Account">
-        <span class="site-user" aria-label="Signed in as {{ user }}">{{ user }}</span>
+        {% set display_name = request.scope.get('session', {}).get('display_name') or ('James' if user == 'demo' else user) %}
+        <span class="site-user" aria-label="Signed in as {{ display_name }}">{{ display_name }}</span>
         <form method="post" action="/logout" class="nav-form"><button type="submit" class="nav-button">Log out</button></form>
       </div>
       {% endif %}
       <div class="site-controls" aria-label="Display controls">
-        <div class="control-group" aria-label="Text size">
-          <span class="control-label">Text</span>
+        <div class="control-group" aria-label="Font size">
           <button type="button" class="control-button" data-font-size="small" aria-label="Small text size">A−</button>
           <button type="button" class="control-button is-active" data-font-size="medium" aria-label="Medium text size">A</button>
           <button type="button" class="control-button" data-font-size="large" aria-label="Large text size">A+</button>
@@ -43,7 +43,9 @@
   </div>
 </header>
 <main id="main-content" tabindex="-1">{% block content %}{% endblock %}</main>
+{% if request.url.path not in ['/create', '/app', '/gallery'] %}
 <footer class="site-footer"><span>reotoi · voice into visual form</span><span>Voice metrics are creative inputs, not clinical assessments.</span></footer>
+{% endif %}
 <script src="{{ url_for('static', path='js/theme.js') }}" defer></script>
 {% block scripts %}{% endblock %}
 </body>

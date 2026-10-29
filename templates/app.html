@@ -14,11 +14,11 @@
   <div class="creation-flow">
     <div id="setup-wizard">
       <ol class="creation-stepper" aria-label="Artwork setup">
-        <li><button type="button" class="creation-stepper__button is-active" data-step-target="1" aria-current="step"><span class="creation-stepper__number">1</span><span>Theme</span></button></li>
+        <li><button type="button" class="creation-stepper__button is-active" data-step-target="1" aria-current="step"><span>Theme</span></button></li>
         <li><span class="creation-stepper__connector" aria-hidden="true"></span></li>
-        <li><button type="button" class="creation-stepper__button" data-step-target="2"><span class="creation-stepper__number">2</span><span>Art style</span></button></li>
+        <li><button type="button" class="creation-stepper__button" data-step-target="2"><span>Art style</span></button></li>
         <li><span class="creation-stepper__connector" aria-hidden="true"></span></li>
-        <li><button type="button" class="creation-stepper__button" data-step-target="3"><span class="creation-stepper__number">3</span><span>Output mode</span></button></li>
+        <li><button type="button" class="creation-stepper__button" data-step-target="3"><span>Output mode</span></button></li>
       </ol>
 
       <section class="setup-step" data-step-panel="1" aria-labelledby="theme-step-title">
@@ -32,7 +32,7 @@
           </label>
           {% endfor %}
         </fieldset>
-        <div class="step-actions"><span>Step 1 of 3</span><button type="button" class="button button--primary" data-step-next="2">Choose art style <span aria-hidden="true">→</span></button></div>
+        <div class="step-actions"><button type="button" class="button button--primary" data-step-next="2">Choose art style <span aria-hidden="true">→</span></button></div>
       </section>
 
       <section class="setup-step" data-step-panel="2" aria-labelledby="style-step-title" hidden>
@@ -46,7 +46,7 @@
           </label>
           {% endfor %}
         </fieldset>
-        <div class="step-actions"><button type="button" class="button button--secondary" data-step-back="1">Back</button><span>Step 2 of 3</span><button type="button" class="button button--primary" data-step-next="3">Choose output <span aria-hidden="true">→</span></button></div>
+        <div class="step-actions"><button type="button" class="button button--secondary" data-step-back="1">Back to theme</button><button type="button" class="button button--primary" data-step-next="3">Choose output <span aria-hidden="true">→</span></button></div>
       </section>
 
       <section class="setup-step" data-step-panel="3" aria-labelledby="output-step-title" hidden>
@@ -60,16 +60,15 @@
           </label>
           {% endfor %}
         </fieldset>
-        <div class="step-actions"><button type="button" class="button button--secondary" data-step-back="2">Back</button><span>Step 3 of 3</span><button type="button" class="button button--primary" data-setup-finish>Continue to voice input <span aria-hidden="true">→</span></button></div>
+        <div class="step-actions"><button type="button" class="button button--secondary" data-step-back="2">Back to art style</button></div>
       </section>
     </div>
 
-    <section class="voice-input-stage" id="voice-input-stage" aria-labelledby="voice-input-title" hidden>
+    <section class="voice-input-stage" id="voice-input-stage" aria-labelledby="voice-input-title">
       <div class="selection-summary" aria-label="Selected artwork settings">
         <div><span>Theme</span><strong id="summary-theme">Abstract</strong></div>
         <div><span>Art style</span><strong id="summary-art-style">Expressive painting</strong></div>
-        <div><span>Output</span><strong id="summary-output-mode">SVG only</strong></div>
-        <button type="button" class="text-button" data-edit-choices>Edit choices</button>
+        <div><span>Output</span><strong id="summary-output-mode">Vector art</strong></div>
       </div>
       <section class="voice-input-panel">
         <div class="voice-input-heading"><div><h2 id="voice-input-title">Bring it to life</h2><p>Record up to {{ max_recording_seconds }} seconds or upload an audio file.</p></div><span class="time-limit">Max {{ max_recording_seconds }} sec</span></div>

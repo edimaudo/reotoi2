@@ -198,7 +198,6 @@
 
   // Keep the three art-direction choices in a short guided flow instead of
   // presenting every control in one long panel.
-  const setupWizard = document.getElementById("setup-wizard");
   const voiceInputStage = document.getElementById("voice-input-stage");
   const setupPanels = Array.from(root.querySelectorAll("[data-step-panel]"));
   const stepperButtons = Array.from(root.querySelectorAll("[data-step-target]"));
@@ -230,21 +229,7 @@
   function updateSelectionSummary() {
     if (summaryTheme) summaryTheme.textContent = selectedChoiceLabel("theme", "Surprise me");
     if (summaryArtStyle) summaryArtStyle.textContent = selectedChoiceLabel("art_style", "Surprise me");
-    if (summaryOutputMode) summaryOutputMode.textContent = selectedChoiceLabel("output_mode", "SVG only");
-  }
-
-  function enterVoiceInputStage() {
-    updateSelectionSummary();
-    if (setupWizard) setupWizard.hidden = true;
-    if (voiceInputStage) voiceInputStage.hidden = false;
-    voiceInputStage?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  function editSetupChoices() {
-    if (voiceInputStage) voiceInputStage.hidden = true;
-    if (setupWizard) setupWizard.hidden = false;
-    activateSetupStep(3);
-    setupWizard?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (summaryOutputMode) summaryOutputMode.textContent = selectedChoiceLabel("output_mode", "Vector art");
   }
 
   stepperButtons.forEach((button) => {
@@ -256,8 +241,11 @@
   root.querySelectorAll("[data-step-back]").forEach((button) => {
     button.addEventListener("click", () => activateSetupStep(button.dataset.stepBack));
   });
-  root.querySelector("[data-setup-finish]")?.addEventListener("click", enterVoiceInputStage);
-  root.querySelector("[data-edit-choices]")?.addEventListener("click", editSetupChoices);
+  root.querySelectorAll('input[name="theme"], input[name="art_style"], input[name="output_mode"]').forEach((input) => {
+    input.addEventListener("change", updateSelectionSummary);
+  });
+  updateSelectionSummary();
+  if (voiceInputStage) voiceInputStage.hidden = false;
   activateSetupStep(1);
 
   function updateGenerateState() {
@@ -1205,7 +1193,7 @@
       setElementText(resultInput, data.input_source === "upload" ? "Audio file" : "Microphone");
     }
     if (resultArtStyle) setElementText(resultArtStyle, humanize(data.art_style || getArtStyle()));
-    const outputLabels = { svg: "SVG only", muse_image: "Muse Image only", fusion: "Fusion", svg_fallback: "SVG fallback" };
+    const outputLabels = { svg: "Vector art", muse_image: "AI image", fusion: "Fusion", svg_fallback: "Vector art fallback" };
     if (resultOutputMode) {
       const requested = data.output_mode_requested || getOutputMode();
       setElementText(resultOutputMode, outputLabels[requested] || humanize(requested));

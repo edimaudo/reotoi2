@@ -8,11 +8,11 @@ The creation page uses a three-step flow: visual theme, art style, and output mo
 
 ## Output modes
 
-- **SVG only** — uses the local procedural SVG renderer; no Muse Image generation call is made.
-- **Muse Image only** — requests a raster image from Muse Image when the Meta Model API is configured.
-- **Fusion** — combines Muse Image output with a transparent, voice-driven SVG vector overlay.
+- **Vector art** — uses the local procedural renderer; no image-generation call is made.
+- **AI image** — requests a generated raster image when the image API is configured.
+- **Fusion** — combines generated image output with a transparent, voice-driven vector overlay.
 
-If an AI image request cannot run, the application produces a local SVG fallback and labels the actual renderer in the result. It never labels a fallback as Muse Image or Fusion.
+If an AI image request cannot run, the application produces a local SVG fallback and labels the actual renderer in the result. It never labels a fallback as an AI image or Fusion.
 
 ## Voice DNA
 
@@ -35,7 +35,7 @@ Open `http://127.0.0.1:8000`. The login screen pre-fills the configured demo use
 
 ## Meta Model API settings
 
-Set `MODEL_API_KEY` (or `META_API_KEY`) to enable Muse Voice Transcribe, Muse Spark, and Muse Image. `META_API_BASE` defaults to `https://api.meta.ai/v1`. Model IDs and timeouts can be overridden in the environment; see `.env.example`. Calls are made only for Muse Image and Fusion modes. The SVG-only mode is local. The current tests exercise input validation, Fusion composition and truthful fallback labels. They do not validate live credentials, API availability, or image quality.
+Set `MODEL_API_KEY` (or `META_API_KEY`) to enable voice transcription, prompt generation, and AI image generation. `META_API_BASE` defaults to `https://api.meta.ai/v1`. Model IDs and timeouts can be overridden in the environment; see `.env.example`. Image and transcription calls are made only for AI image and Fusion modes. The SVG-only mode is local. The current tests exercise input validation, Fusion composition and truthful fallback labels. They do not validate live credentials, API availability, or image quality.
 
 ## Gallery and persistence
 
@@ -48,3 +48,6 @@ The interface uses Inter, keyboard-visible focus styles, a skip link, screen-rea
 ## Deployment and security notes
 
 `vercel.json` uses Vercel's Python runtime for `main.py`. Configure all secrets in the deployment environment rather than committing `.env`. The demo username/password and cookie signing secret are configuration defaults for a prototype; do not use them for real accounts. The local upload is size- and duration-limited, normalized to WAV before analysis, and removed from the temporary directory after processing. Logs should not include raw audio or API keys.
+
+
+For the demo account header, set `DEMO_DISPLAY_NAME` (defaults to `James`). This is a display name only; the demo login username remains configured through `DEMO_USERNAME`.

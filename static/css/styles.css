@@ -95,3 +95,29 @@
   .site-account { gap: .2rem; }
   .nav-button { padding: .3rem .2rem; }
 }
+
+
+/* Wrapped display controls without a redundant size label. */
+.site-controls { flex-wrap: wrap; max-width: 100%; }
+.control-group {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .2rem;
+  padding: .2rem;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: var(--surface);
+  max-width: 100%;
+}
+.control-button { border-color: transparent; border-radius: 999px; min-width: 2.1rem; min-height: 2.1rem; }
+.control-button.is-active { border-color: var(--blue); }
+.theme-toggle { border-radius: 999px; min-width: 2.5rem; min-height: 2.5rem; }
+.site-nav a[aria-current="page"] { text-decoration: none; }
+@media (max-width: 480px) {
+  .site-header__right { flex-wrap: wrap; justify-self: end; max-width: 100%; }
+  .site-controls { justify-content: flex-end; }
+  .control-group { gap: .1rem; }
+  .control-button { min-width: 1.8rem; min-height: 1.8rem; }
+}

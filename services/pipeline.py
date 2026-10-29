@@ -33,7 +33,7 @@ def _local_brief(dna: dict, theme: str, style: str) -> dict:
 
 
 def _compose_fusion(image_uri: str, features: dict, artwork_id: str) -> str:
-    """Place an SVG vector overlay above the Muse Image raster in one SVG document."""
+    """Place a voice-driven vector overlay above an AI-generated raster image."""
     pitch = float(features.get("pitch", 0.5))
     energy = float(features.get("energy", 0.5))
     rhythm = float(features.get("rhythm", 0.5))
@@ -51,7 +51,7 @@ def _compose_fusion(image_uri: str, features: dict, artwork_id: str) -> str:
     path = "M " + " L ".join(points)
     # Voice-linked graphic annotations remain legible and intentionally transparent.
     svg = (f'<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img">'
-           f'<title>reotoi Fusion artwork</title><desc>Muse Image artwork with a transparent SVG overlay shaped by measured voice characteristics.</desc>'
+           f'<title>reotoi Fusion artwork</title><desc>AI-generated artwork with a transparent vector overlay shaped by measured voice characteristics.</desc>'
            f'<image href="{image_uri}" x="0" y="0" width="800" height="800" preserveAspectRatio="xMidYMid slice"/>'
            f'<path d="{path}" fill="none" stroke="{accent}" stroke-width="{1.8 + variation*2.0:.1f}" opacity="0.8"/>'
            f'<circle cx="400" cy="400" r="{65 + energy*85:.1f}" fill="none" stroke="{secondary}" stroke-width="1.5" opacity="0.42"/>'
@@ -62,7 +62,7 @@ def _compose_fusion(image_uri: str, features: dict, artwork_id: str) -> str:
 
 
 async def create_artwork(*, features: dict, voice_dna: dict, theme: str, art_style: str, output_mode: str, audio_path: str) -> dict:
-    """Create SVG, Muse Image, or genuine Muse Image + SVG-overlay Fusion."""
+    """Create vector art, an AI-generated image, or Fusion with a vector overlay."""
     if output_mode not in OUTPUT_MODES:
         raise ValueError("Invalid output mode.")
     if art_style not in ART_STYLES:
@@ -81,13 +81,13 @@ async def create_artwork(*, features: dict, voice_dna: dict, theme: str, art_sty
             engine["transcription"] = meta_ai.VOICE_MODEL
         except meta_ai.MetaAIError as exc:
             engine["transcription"] = "Unavailable"
-            logger.warning("Muse Voice Transcribe unavailable: %s", exc)
+            logger.warning("Voice transcription unavailable: %s", exc)
         try:
             brief = await meta_ai.write_art_brief(voice_dna, features.get("duration", 0.0), resolved_theme, transcript, art_style)
             engine["prompt"] = meta_ai.SPARK_MODEL
         except meta_ai.MetaAIError as exc:
-            engine["prompt"] = "Local prompt (Muse Spark unavailable)"
-            logger.warning("Muse Spark unavailable: %s", exc)
+            engine["prompt"] = "Local prompt (prompt generation unavailable)"
+            logger.warning("Prompt generation unavailable: %s", exc)
 
     image_uri = None
     if output_mode in {"muse_image", "fusion"} and configured:
@@ -95,35 +95,35 @@ async def create_artwork(*, features: dict, voice_dna: dict, theme: str, art_sty
             image_uri = await meta_ai.render_image(brief["prompt"])
             engine["image"] = meta_ai.IMAGE_MODEL
         except meta_ai.MetaAIError as exc:
-            logger.warning("Muse Image unavailable: %s", exc)
-            notes.append("Muse Image was unavailable; a local SVG fallback was used instead.")
+            logger.warning("AI image generation unavailable: %s", exc)
+            notes.append("AI image generation was unavailable; locally rendered vector artwork was used instead.")
     elif output_mode in {"muse_image", "fusion"}:
-        notes.append("Meta Model API is not configured; a local SVG fallback was used instead.")
+        notes.append("AI image generation is not configured; locally rendered vector artwork was used instead.")
 
     if output_mode == "svg":
         artwork_id, artwork_url, parameters = render_svg(features, resolved_theme)
         actual_mode = "svg"
-        artwork_engine = "Local SVG renderer"
-        notes.append("This is locally rendered vector artwork. The selected AI art style is not fully reproduced by the SVG renderer.")
+        artwork_engine = "Local vector renderer"
+        notes.append("This is vector artwork rendered locally from voice-driven shapes and lines. It may not reproduce every nuance of the selected technique.")
     elif image_uri and output_mode == "muse_image":
         artwork_id = str(uuid.uuid4())
         artwork_url = image_uri
         parameters = build_visual_parameters(features, resolved_theme)
         actual_mode = "muse_image"
-        artwork_engine = "Muse Image"
-        notes.append("Muse Image generated the raster artwork using the selected theme, art style and available voice information.")
+        artwork_engine = "AI image generator"
+        notes.append("An AI-generated image was created using the selected theme, art style and available voice information.")
     elif image_uri and output_mode == "fusion":
         artwork_id = str(uuid.uuid4())
         artwork_url = _compose_fusion(image_uri, features, artwork_id)
         parameters = build_visual_parameters(features, resolved_theme)
         actual_mode = "fusion"
-        artwork_engine = "Fusion (Muse Image + SVG overlay)"
-        notes.append("Fusion combines Muse Image raster artwork with a transparent, voice-driven SVG vector overlay.")
+        artwork_engine = "Fusion (AI image + vector overlay)"
+        notes.append("Fusion combines an AI-generated image with a transparent, voice-driven vector overlay.")
     else:
         artwork_id, artwork_url, parameters = render_svg(features, resolved_theme)
         actual_mode = "svg_fallback"
-        artwork_engine = "Local SVG renderer"
-        notes.append("Requested AI output was unavailable. This result is SVG fallback artwork, not Muse Image or Fusion output.")
+        artwork_engine = "Local vector renderer"
+        notes.append("The requested AI output was unavailable. This is vector-art fallback, not an AI image or Fusion output.")
 
     return {
         "artwork_id": artwork_id,
